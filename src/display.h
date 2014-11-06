@@ -1,7 +1,7 @@
 //******************************************************************************
 // Header for display.c -- display.h
 //
-// by: Daniel Commins (dencee@gmail.com)
+// by: Daniel Commins (danielcommins@atacmd.com)
 //
 //******************************************************************************
 

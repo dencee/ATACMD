@@ -3,11 +3,11 @@
 //
 // $Date: 2014-10-31 09:13:14 -0700 (Fri, 31 Oct 2014) $
 //
-// by: Daniel Commins (dencee@gmail.com)
+// by: Daniel Commins (danielcommins@atacmd.com)
 //
 // Special thanks to:
 //    Hale Landis (http://ata-atapi.com/)
-//    Randy Maude ()
+//    Randy Maude (OFF THE GRID)
 //
 // Disclaimer:
 // -----------
@@ -17,7 +17,7 @@
 // Again, this program is designed for testing only!
 //
 // Purpose:
-//--------- 
+//---------
 // The purpose of this program is to act as a diagnostic tool for ATA disk
 // drives. This program differs from other HDD diagnostic tools in that it has
 // the ability to issue commands at the command block register level. This
@@ -51,9 +51,9 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -228,11 +228,11 @@ int PrintDUTInfo( const char* pCommand )
 {
    unsigned long gMaxLBAID, gMaxLBADCO, gMaxLBAHPA;
    int kSecurityWord;
-   
+
    GetMaxLBAFromIdentifyDevice(); gMaxLBAID = ugReturnValue3;
    GetMaxLBAFromReadNativeMax(); gMaxLBAHPA = ugReturnValue1;
    GetMaxLBAFromDCO(); gMaxLBADCO = ugReturnValue1;
-   
+
    // Put arrays on own level to not consume lots of stack space
    {
       char wcModelString[45]; // words 27-46, so size must be >= 41 bytes
@@ -252,7 +252,7 @@ int PrintDUTInfo( const char* pCommand )
    printf( "-----------------------------------\n" );
    printf( "Max ID LBA ..: %08lX (%ld)\n", gMaxLBAID, gMaxLBAID );
    printf( "Max HPA LBA .: %08lX (%ld)\n", gMaxLBAHPA, gMaxLBAHPA );
-   printf( "Max DCO LBA .: %08lX (%ld)\n", gMaxLBADCO, gMaxLBADCO );   
+   printf( "Max DCO LBA .: %08lX (%ld)\n", gMaxLBADCO, gMaxLBADCO );
    printf( "--------------------------------------------------------------------\n" );
    kSecurityWord = GetDriveSecurityState();
    printf( "Security W128: %04Xh, ", kSecurityWord );
@@ -279,8 +279,8 @@ int PrintDUTInfo( const char* pCommand )
       default:
          printf( "Unknown security state..., " );
          break;
-   }   
-   if ( ( kSecurityWord >> 8 ) & SECURITY_LEVEL_MAXIMUM )   
+   }
+   if ( ( kSecurityWord >> 8 ) & SECURITY_LEVEL_MAXIMUM )
    {
       printf( "level MAX" );
    }
@@ -290,7 +290,7 @@ int PrintDUTInfo( const char* pCommand )
    }
    printf( "\n" );
    printf( "--------------------------------------------------------------------\n" );
-   
+
    return ( NO_ERROR );
 }
 
@@ -304,18 +304,18 @@ int PrintDUTInfo( const char* pCommand )
 int ScanDrives( const char* pCommand )
 {
    int exitProgram;
-   
+
    system( "cls" );
-   
+
    exitProgram = DisplayConnectedATAStorageDevices() ;
-   
+
    if ( exitProgram == FALSE )
    {
       printf( "Active HDD: " );
       PrintModelString();
       printf( "\n" );
    }
-   
+
    return ( exitProgram );
 }
 
@@ -795,11 +795,11 @@ int DoCommand( const char* pCommand )
 
    if ( pCommand == NULL ) { printf( "NULL command pointer!" ); exitProgram = TRUE; }
    if ( !StringCompareIgnoreCase( pCommand, "ex", strlen( "ex" ) ) ) { exitProgram = TRUE; }
-   
+
    if ( exitProgram == FALSE )
    {
-      printf( "\n" );      
-      
+      printf( "\n" );
+
       numAtacmdCommands = ( sizeof( wtAtacmdCommands ) / sizeof( struct tEachCommand ) );
 
       // Search through all the user-defined ATA command macros

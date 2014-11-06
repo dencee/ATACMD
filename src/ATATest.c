@@ -3,7 +3,7 @@
 //
 // $Date: 2014-10-31 09:13:14 -0700 (Fri, 31 Oct 2014) $
 //
-// by: Daniel Commins (dencee@gmail.com)
+// by: Daniel Commins (danielcommins@atacmd.com)
 //
 // Disclaimer:
 // -----------
@@ -34,9 +34,9 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -380,8 +380,8 @@ int main()
       {
          printf( "Command timeout occurred!\n" );
          fprintf( pReport, "   COMMAND %02Xh timed out\n", ataCommand );
-         SoftwareReset();         
-         
+         SoftwareReset();
+
 //         ShowAll();
 //         break;
       }
@@ -404,7 +404,7 @@ int main()
          case CMD_SLEEP1:
          case CMD_SLEEP2:
             // Put drive in standby
-            SoftwareReset();         
+            SoftwareReset();
 
             // Issue recal to bring the drive back into active/idle
             SendNonDataCommand( CMD_RECALIBRATE, 0, 0, 0, 0, 0 );

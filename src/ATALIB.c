@@ -1,11 +1,11 @@
 //******************************************************************************
 // ATA command library -- ATALIB.C
 //
-// by: Daniel Commins (dencee@gmail.com)
+// by: Daniel Commins (danielcommins@atacmd.com)
 //
 // Special thanks to:
 //    Hale Landis (http://ata-atapi.com/)
-//    Randy Maude ()
+//    Randy Maude (OFF THE GRID)
 //    Logan Straatemeier (straatemeier@gmail.com)
 //
 // Purpose:
@@ -17,12 +17,12 @@
 //
 // The purpose of this library is to provide common functions for other
 // programs to create ATA drive diagnostic software to be used for testing.
-// 
+//
 // History:
-//--------- 
+//---------
 // Originally this library was created to be used for scripting, as is evident
 // in the global return variables and print/log options for some of the
-// functions. Newly added code is does away with this focus and is more geared
+// functions. Newly added code does away with this focus and is more geared
 // more towards acting as support/helper code for larger programs. I do plan to
 // update all the code to reflect this intent, but until then the difference in
 // style between some of the functions will remain. I also plan to remove the
@@ -359,7 +359,7 @@ void GetSerialNumber( char* const pSerialNum, unsigned int buffSizeInBytes )
    {
       // First char in word
       ch = *( buffer + ( ( kSerialCounter * 2 ) + 1 ) );
-      
+
       if ( ( firstChar == TRUE ) || ( ch != ' ' ) )
       {
          firstChar = TRUE;
@@ -369,7 +369,7 @@ void GetSerialNumber( char* const pSerialNum, unsigned int buffSizeInBytes )
 
       // Second char in word
       ch = *( buffer + ( ( kSerialCounter * 2 ) ) );
-      
+
       if ( ( firstChar == TRUE ) || ( ch != ' ' ) )
       {
          firstChar = TRUE;
@@ -395,14 +395,14 @@ void GetSerialNumber( char* const pSerialNum, unsigned int buffSizeInBytes )
 void PrintSerialNumber()
 {
    char wcSerialNumber[25]; // words 10-19, so size must be >= 21 bytes
-   
+
    // Populate with serial number
    GetSerialNumber( wcSerialNumber, sizeof( wcSerialNumber ) );
-   
+
    // Copy string to global string and print
    sprintf( upPrintString, "%s", wcSerialNumber );
-   PrintString( ukPrintOutput );   
-   
+   PrintString( ukPrintOutput );
+
    return;
 } // End PrintSerialNumber
 
@@ -442,16 +442,16 @@ void GetFirmwareRevision( char* const pFirmwareRevision, unsigned int buffSizeIn
    {
       // First byte in word
       ch = *( buffer + ( ( kFirmwareCounter * 2 ) + 1 ) );
-      
+
       if ( ( firstChar == TRUE ) || ( ch != ' ' ) )
-      {      
+      {
          *( pFirmwareRevision + kIndex ) = ch;
          kIndex++;
       }
 
       // Second byte in word
       ch = *( buffer + ( kFirmwareCounter * 2 ) );
-      
+
       if ( ( firstChar == TRUE ) || ( ch != ' ' ) )
       {
          *( pFirmwareRevision + kIndex ) = ch;
@@ -476,14 +476,14 @@ void GetFirmwareRevision( char* const pFirmwareRevision, unsigned int buffSizeIn
 void PrintFirmwareRevision()
 {
    char wcFirmwareRevision[10]; // words 23-26, so size must be >= 9 bytes
-   
+
    // Populate with firmware revision string
    GetFirmwareRevision( wcFirmwareRevision, sizeof( wcFirmwareRevision ) );
-   
+
    // Copy string to global string and print
    sprintf( upPrintString, "%s", wcFirmwareRevision );
    PrintString( ukPrintOutput );
-   
+
    return;
 }// End PrintFirmwareRevision
 
@@ -523,18 +523,18 @@ void GetModelString( char* const pModelNum, unsigned int buffSizeInBytes )
    {
       // HOB
       ch = *( buffer + ( ( kModelCounter * 2 ) + 1 ) );
-      
+
       if ( ( firstChar == TRUE ) || ( ch != ' ' ) )
-      {      
+      {
          *( pModelNum + kIndex ) = ch;
          kIndex++;
       }
 
       // LOB
       ch = *( buffer + ( kModelCounter * 2 ) );
-      
+
       if ( ( firstChar == TRUE ) || ( ch != ' ' ) )
-      {      
+      {
          *( pModelNum + kIndex ) = ch;
          kIndex++;
       }
@@ -557,14 +557,14 @@ void GetModelString( char* const pModelNum, unsigned int buffSizeInBytes )
 void PrintModelString()
 {
    char wcModelString[45]; // words 27-46, so size must be >= 41 bytes
-   
+
    // Populate with model number
    GetModelString( wcModelString, sizeof( wcModelString ) );
-   
+
    // Copy string to global string and print
    sprintf( upPrintString, "%s", wcModelString );
    PrintString( ukPrintOutput );
-   
+
    return;
 } // End PrintModelString
 
@@ -2706,15 +2706,15 @@ void PrintDataBufferHex( int numberOfBytes, int printType )
 int GetIDWord( char* pIDBuffer, unsigned int byteOffset )
 {
    int word;
-   
+
    if ( pIDBuffer == GET_ID_DATA )
    {
       IdentifyDevice();
    }
-   
+
    //word = *( (short *)buffer + byteOffset );
    word = ( ( *( buffer + byteOffset + 1 ) << 8 ) | ( *( buffer + byteOffset ) ) );
-   
+
    return ( word );
 }
 
@@ -3333,7 +3333,7 @@ int DisplayConnectedATAStorageDevices()
          {
             char wcModelString[45];  // words 27-46, so size must be >= 41 bytes
             char wcSerialNumber[25]; // words 10-19, so size must be >= 21 bytes
-            
+
             // Setup device I/O ports
             SetActiveDevice( eachDevice );
 

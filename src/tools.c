@@ -1,7 +1,7 @@
 //******************************************************************************
 // Simple and generic functions -- tools.C
 //
-// by: Daniel Commins (dencee@gmail.com)
+// by: Daniel Commins (danielcommins@atacmd.com)
 //
 // File contains simple and generic functions I use in other files, but feel do
 // not belong in those files.
@@ -52,7 +52,9 @@ void RemovePadding( char** ppInputStr ) // TODO: think about making this char** 
    char* pStartPtr;
    char* pEndPtr;
 
-   if ( ppInputStr == NULL ) { return; }
+   if ( ppInputStr == NULL ) {
+      return;
+   }
 
    // Remove trailing spaces
    for ( pEndPtr = ( *ppInputStr + strlen( *ppInputStr ) - 1 ); *pEndPtr == ' '; pEndPtr-- ) {}
@@ -79,7 +81,9 @@ void RemoveTrailingSpaces( char* const pInputStr )
 {
    char* pEndPtr;
 
-   if ( pInputStr == NULL ) { return; }
+   if ( pInputStr == NULL ) {
+      return;
+   }
 
    // Remove trailing spaces
    for ( pEndPtr = ( pInputStr + strlen( pInputStr ) - 1 ); *pEndPtr == ' '; pEndPtr-- ) {}
@@ -103,13 +107,11 @@ int StringCompareIgnoreCase( const char* pStr1, const char* pStr2, int numToComp
 
    result = ERROR;
 
-   for ( eachChar = 0; eachChar < numToCompare; eachChar++, pStr1++, pStr2++ )
-   {
+   for ( eachChar = 0; eachChar < numToCompare; eachChar++, pStr1++, pStr2++ ) {
       result = ( tolower( *pStr1 ) - tolower( *pStr2 ) );
 
       // If char differs or end of string reached
-      if ( ( result != 0 ) || ( *pStr1 == NULL ) )
-      {
+      if ( ( result != 0 ) || ( *pStr1 == NULL ) ) {
          break;
       }
    }

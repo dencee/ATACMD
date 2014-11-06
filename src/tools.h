@@ -1,7 +1,7 @@
 //******************************************************************************
 // Simple and generic functions header -- tools.h
 //
-// by: Daniel Commins (dencee@gmail.com)
+// by: Daniel Commins (danielcommins@atacmd.com)
 //
 //******************************************************************************
 

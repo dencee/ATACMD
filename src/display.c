@@ -1,12 +1,12 @@
 //******************************************************************************
 // Functions related to read/writing from screen memory -- display.c
 //
-// by: Daniel Commins (dencee@gmail.com)
+// by: Daniel Commins (danielcommins@atacmd.com)
 //
 // References:
 // -----------
 // http://wiki.osdev.org/Printing_To_Screen
-// 
+//
 //******************************************************************************
 
 #include <stdlib.h>
@@ -212,7 +212,7 @@ void SaveScreen()
 
    memcpy( wcSavedScreen, upVideoMemoryAddr, BYTES_PER_VIDEO_SCREEN );
    uScreenSavedFlag = SCREEN_SAVED;
-   
+
    return;
 }
 
@@ -500,11 +500,11 @@ void DisplayATARegs()
          case CYLL_REG2:
             sprintf( wcATARegString, "CylLow..: %02Xh", reg_cmd_info.cl2 );
             break;
-            
+
          case CYLH_REG2:
             sprintf( wcATARegString, "CylHi...: %02Xh", reg_cmd_info.ch2 );
             break;
-            
+
          case DEVH_REG2:
             sprintf( wcATARegString, "DevHead.: %02Xh", reg_cmd_info.dh2 );
             break;
@@ -670,7 +670,7 @@ int GetATACommandParameters( long int* pATARegisters )
 
             // Null terminate the string then convert string to long
             wcRegInput[ endColumn ] = '\0';
-            
+
             *( pATARegisters + ( line - startLine ) ) = ( strtol( wcRegInput, NULL, 16 ) );
          }
 

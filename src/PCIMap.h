@@ -1,7 +1,7 @@
 //******************************************************************************
 // PCI bus address map -- PCIMap.h
 //
-// by: Daniel Commins (dencee@gmail.com)
+// by: Daniel Commins (danielcommins@atacmd.com)
 //
 // References:
 // -----------
@@ -18,9 +18,9 @@
 #define PCI_MAX_BUS_NUMBER                               ( 256 )
 #define PCI_MAX_DEVICE_NUMBER                            ( 32 )
 #define PCI_MAX_FUNCTION_NUMBER                          ( 8 )
-                     
-//#define PCI_BAR0_OFFSET                                  ( 0x10 )                     
-//#define PCI_BAR1_OFFSET                                  ( 0x14 )                     
+
+//#define PCI_BAR0_OFFSET                                  ( 0x10 )
+//#define PCI_BAR1_OFFSET                                  ( 0x14 )
 //#define PCI_BAR4_OFFSET                                  ( 0x20 )
 //#define PCI_INTERRUPT_LINE_OFFSET                        ( 0x3C )
 
