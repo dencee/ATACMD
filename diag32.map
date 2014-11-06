@@ -1,0 +1,34 @@
+Open Watcom Linker Version 1.9
+Portions Copyright (c) 1985-2002 Sybase, Inc. All Rights Reserved.
+Created on:       14/08/18 19:30:29
+Warning! W1008: cannot open math87l.lib : No such file or directory
+Warning! W1008: cannot open emu87.lib : No such file or directory
+Warning! W1008: cannot open clibl.lib : No such file or directory
+Executable Image: diag32.exe
+creating a CauseWay executable
+Error! E2028: __STK is an undefined reference
+Error! E2028: memset_ is an undefined reference
+Error! E2028: malloc_ is an undefined reference
+Error! E2028: sprintf_ is an undefined reference
+Error! E2028: strnicmp_ is an undefined reference
+Error! E2028: ___iob is an undefined reference
+Error! E2028: fgets_ is an undefined reference
+Error! E2028: strcpy_ is an undefined reference
+Error! E2028: scanf_ is an undefined reference
+Error! E2028: system_ is an undefined reference
+Error! E2028: printf_ is an undefined reference
+Error! E2028: fopen_ is an undefined reference
+Error! E2028: fprintf_ is an undefined reference
+Error! E2028: fclose_ is an undefined reference
+Error! E2028: _big_code_ is an undefined reference
+Error! E2028: inp_ is an undefined reference
+Error! E2028: outp_ is an undefined reference
+Error! E2028: _disable_ is an undefined reference
+Error! E2028: _dos_setvect_ is an undefined reference
+Error! E2028: _enable_ is an undefined reference
+Error! E2028: _dos_getvect_ is an undefined reference
+Error! E2028: outpw_ is an undefined reference
+Error! E2028: __I4D is an undefined reference
+Error! E2028: __I4M is an undefined reference
+Error! E2028: strcat_ is an undefined reference
+Error! E3137: too many errors encountered

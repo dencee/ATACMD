@@ -1,0 +1,89 @@
+!define BLANK ""
+C:\watcom\ATACMD\ATAIOINT.obj : C:\watcom\ATACMD\src\ATAIOINT.C .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ *wcc src\ATAIOINT.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3 -bt=dos -fo=.o&
+bj -ml
+
+C:\watcom\ATACMD\ATAIOISA.obj : C:\watcom\ATACMD\src\ATAIOISA.C .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ *wcc src\ATAIOISA.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3 -bt=dos -fo=.o&
+bj -ml
+
+C:\watcom\ATACMD\ATAIOPCI.obj : C:\watcom\ATACMD\src\ATAIOPCI.C .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ *wcc src\ATAIOPCI.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3 -bt=dos -fo=.o&
+bj -ml
+
+C:\watcom\ATACMD\ATAIOPIO.obj : C:\watcom\ATACMD\src\ATAIOPIO.C .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ *wcc src\ATAIOPIO.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3 -bt=dos -fo=.o&
+bj -ml
+
+C:\watcom\ATACMD\ATAIOREG.obj : C:\watcom\ATACMD\src\ATAIOREG.C .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ *wcc src\ATAIOREG.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3 -bt=dos -fo=.o&
+bj -ml
+
+C:\watcom\ATACMD\ATAIOSUB.obj : C:\watcom\ATACMD\src\ATAIOSUB.C .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ *wcc src\ATAIOSUB.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3 -bt=dos -fo=.o&
+bj -ml
+
+C:\watcom\ATACMD\ATAIOTMR.obj : C:\watcom\ATACMD\src\ATAIOTMR.C .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ *wcc src\ATAIOTMR.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3 -bt=dos -fo=.o&
+bj -ml
+
+C:\watcom\ATACMD\ATAIOTRC.obj : C:\watcom\ATACMD\src\ATAIOTRC.C .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ *wcc src\ATAIOTRC.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3 -bt=dos -fo=.o&
+bj -ml
+
+C:\watcom\ATACMD\ATALIB.obj : C:\watcom\ATACMD\src\ATALIB.c .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ *wcc src\ATALIB.c -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3 -bt=dos -fo=.obj&
+ -ml
+
+C:\watcom\ATACMD\ATATest.obj : C:\watcom\ATACMD\src\ATATest.c .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ *wcc src\ATATest.c -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3 -bt=dos -fo=.ob&
+j -ml
+
+C:\watcom\ATACMD\display.obj : C:\watcom\ATACMD\src\display.c .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ *wcc src\display.c -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3 -bt=dos -fo=.ob&
+j -ml
+
+C:\watcom\ATACMD\tools.obj : C:\watcom\ATACMD\src\tools.c .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ *wcc src\tools.c -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3 -bt=dos -fo=.obj &
+-ml
+
+C:\watcom\ATACMD\AtaTest.exe : C:\watcom\ATACMD\ATAIOINT.obj C:\watcom\ATACM&
+D\ATAIOISA.obj C:\watcom\ATACMD\ATAIOPCI.obj C:\watcom\ATACMD\ATAIOPIO.obj C&
+:\watcom\ATACMD\ATAIOREG.obj C:\watcom\ATACMD\ATAIOSUB.obj C:\watcom\ATACMD\&
+ATAIOTMR.obj C:\watcom\ATACMD\ATAIOTRC.obj C:\watcom\ATACMD\ATALIB.obj C:\wa&
+tcom\ATACMD\ATATest.obj C:\watcom\ATACMD\display.obj C:\watcom\ATACMD\tools.&
+obj C:\watcom\ATACMD\src\ATAIO.H C:\watcom\ATACMD\src\ATALIB.h C:\watcom\ATA&
+CMD\src\display.h C:\watcom\ATACMD\src\PCIMap.h C:\watcom\ATACMD\src\tools.h&
+ .AUTODEPEND
+ @C:
+ cd C:\watcom\ATACMD
+ @%write AtaTest.lk1 FIL ATAIOINT.obj,ATAIOISA.obj,ATAIOPCI.obj,ATAIOPIO.obj&
+,ATAIOREG.obj,ATAIOSUB.obj,ATAIOTMR.obj,ATAIOTRC.obj,ATALIB.obj,ATATest.obj,&
+display.obj,tools.obj
+ @%append AtaTest.lk1 
+ *wlink name AtaTest d all sys dos op m op maxe=25 op q op symf @AtaTest.lk1
+

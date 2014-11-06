@@ -1,0 +1,75 @@
+!define BLANK ""
+C:\watcom\HDD_Diag\ATACMD.obj : C:\watcom\HDD_Diag\ATACMD.c .AUTODEPEND
+ @C:
+ cd C:\watcom\HDD_Diag
+ *wcc386 ATACMD.c -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3r -bt=dos -fo=.obj&
+ -ms
+
+C:\watcom\HDD_Diag\ATAIOINT.obj : C:\watcom\HDD_Diag\ATAIOINT.C .AUTODEPEND
+ @C:
+ cd C:\watcom\HDD_Diag
+ *wcc386 ATAIOINT.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3r -bt=dos -fo=.o&
+bj -ms
+
+C:\watcom\HDD_Diag\ATAIOISA.obj : C:\watcom\HDD_Diag\ATAIOISA.C .AUTODEPEND
+ @C:
+ cd C:\watcom\HDD_Diag
+ *wcc386 ATAIOISA.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3r -bt=dos -fo=.o&
+bj -ms
+
+C:\watcom\HDD_Diag\ATAIOPCI.obj : C:\watcom\HDD_Diag\ATAIOPCI.C .AUTODEPEND
+ @C:
+ cd C:\watcom\HDD_Diag
+ *wcc386 ATAIOPCI.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3r -bt=dos -fo=.o&
+bj -ms
+
+C:\watcom\HDD_Diag\ATAIOPIO.obj : C:\watcom\HDD_Diag\ATAIOPIO.C .AUTODEPEND
+ @C:
+ cd C:\watcom\HDD_Diag
+ *wcc386 ATAIOPIO.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3r -bt=dos -fo=.o&
+bj -ms
+
+C:\watcom\HDD_Diag\ATAIOREG.obj : C:\watcom\HDD_Diag\ATAIOREG.C .AUTODEPEND
+ @C:
+ cd C:\watcom\HDD_Diag
+ *wcc386 ATAIOREG.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3r -bt=dos -fo=.o&
+bj -ms
+
+C:\watcom\HDD_Diag\ATAIOSUB.obj : C:\watcom\HDD_Diag\ATAIOSUB.C .AUTODEPEND
+ @C:
+ cd C:\watcom\HDD_Diag
+ *wcc386 ATAIOSUB.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3r -bt=dos -fo=.o&
+bj -ms
+
+C:\watcom\HDD_Diag\ATAIOTMR.obj : C:\watcom\HDD_Diag\ATAIOTMR.C .AUTODEPEND
+ @C:
+ cd C:\watcom\HDD_Diag
+ *wcc386 ATAIOTMR.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3r -bt=dos -fo=.o&
+bj -ms
+
+C:\watcom\HDD_Diag\ATAIOTRC.obj : C:\watcom\HDD_Diag\ATAIOTRC.C .AUTODEPEND
+ @C:
+ cd C:\watcom\HDD_Diag
+ *wcc386 ATAIOTRC.C -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3r -bt=dos -fo=.o&
+bj -ms
+
+C:\watcom\HDD_Diag\Diag.obj : C:\watcom\HDD_Diag\Diag.c .AUTODEPEND
+ @C:
+ cd C:\watcom\HDD_Diag
+ *wcc386 Diag.c -i="C:\WATCOM/h" -w4 -e25 -zq -od -d2 -3r -bt=dos -fo=.obj -&
+ms
+
+C:\watcom\HDD_Diag\diag32.exe : C:\watcom\HDD_Diag\ATACMD.obj C:\watcom\HDD_&
+Diag\ATAIOINT.obj C:\watcom\HDD_Diag\ATAIOISA.obj C:\watcom\HDD_Diag\ATAIOPC&
+I.obj C:\watcom\HDD_Diag\ATAIOPIO.obj C:\watcom\HDD_Diag\ATAIOREG.obj C:\wat&
+com\HDD_Diag\ATAIOSUB.obj C:\watcom\HDD_Diag\ATAIOTMR.obj C:\watcom\HDD_Diag&
+\ATAIOTRC.obj C:\watcom\HDD_Diag\Diag.obj C:\watcom\HDD_Diag\ATACMD.h C:\wat&
+com\HDD_Diag\ATAIO.H .AUTODEPEND
+ @C:
+ cd C:\watcom\HDD_Diag
+ @%write diag32.lk1 FIL ATACMD.obj,ATAIOINT.obj,ATAIOISA.obj,ATAIOPCI.obj,AT&
+AIOPIO.obj,ATAIOREG.obj,ATAIOSUB.obj,ATAIOTMR.obj,ATAIOTRC.obj,Diag.obj
+ @%append diag32.lk1 
+ *wlink name diag32 d all sys causeway op m op maxe=25 op q op symf @diag32.&
+lk1
+
