@@ -1268,4 +1268,83 @@ unsigned char * trc_llt_dump2( void )
    return trcDmpBuf;
 }
 
+void trc_ClearTrace()
+{
+   // Clear the command history and low level traces
+   trc_cht_dump0();     // zero the command history
+   trc_llt_dump0();     // zero the low level trace
+}
+
+static void pause()
+{
+   int ch;
+   
+   // Clear any queued up keys
+   while ( kbhit() ) {
+      ch = getch();
+      
+      if ( ( ch == 0 ) || ( ch == 224 ) )
+         getch();
+   }
+   
+   // Pause until key hit
+   printf( "Press any key to continue...\n" );
+   
+   // Wait for a key to be pressed
+   while ( !kbhit() )
+   
+   // Clear any queued up keys
+   while ( kbhit() ) {
+      ch = getch();
+      
+      if ( ( ch == 0 ) || ( ch == 224 ) )
+         getch();
+   }
+}
+
+void trc_ShowAll()
+{
+   int lc = 0;
+   unsigned char* cp;
+
+   // display the command error information
+   trc_err_dump1();           // start
+   while ( 1 ) {
+      cp = trc_err_dump2();   // get and display a line
+      if ( cp == NULL )
+         break;
+      printf( "* %s\n", cp );
+   }
+   pause();
+
+   // display the command history
+   trc_cht_dump1();           // start
+   while ( 1 )
+   {
+      cp = trc_cht_dump2();   // get and display a line
+      if ( cp == NULL )
+         break;
+      printf( "* %s\n", cp );
+      lc ++ ;
+      if ( ! ( lc & 0x000f ) )
+         pause();
+   }
+
+   // display the low level trace
+   trc_llt_dump1();           // start
+   while ( 1 )
+   {
+      cp = trc_llt_dump2();   // get and display a line
+      if ( cp == NULL )
+         break;
+      printf( "* %s\n", cp );
+      lc ++ ;
+      if ( ! ( lc & 0x000f ) )
+         pause();
+   }
+
+   if ( lc & 0x000f )
+      pause();
+}
+
 // end ataiotrc.c

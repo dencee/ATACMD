@@ -117,6 +117,7 @@ unsigned char far * dma_pci_largeIoBufPtr;   // LARGE PRD I/O address
 
 unsigned long far * dma_pci_prd_ptr;   // current PRD buffer address
 int dma_pci_num_prd;                   // current number of PRD entries
+int dma_pci_enabled_flag;
 
 // private data...
 
@@ -407,7 +408,6 @@ static int set_up_xfer( int dir, long bc, unsigned int seg, unsigned int off )
 //***********************************************************
 
 int dma_pci_config( unsigned int regAddr )
-
 {
    unsigned int off;
    unsigned int seg;
@@ -462,6 +462,8 @@ int dma_pci_config( unsigned int regAddr )
    dma_pci_largeIoBufPtr = (void *) 0;
    dma_pci_largeMaxB = 0;
    dma_pci_largeMaxS = 0;
+
+   dma_pci_enabled_flag = 1;   
 
    return 0;
 }
@@ -668,12 +670,21 @@ static int exec_pci_ata_cmd( int dev,
    cntr = 0;
    while ( 1 )
    {
-      cntr ++ ;
-      if ( ! ( cntr & 0x1fff ) )
+      cntr++ ;
+      if ( !( cntr & 0x1fff ) )
       {
          sub_readBusMstrStatus();         // read BM status (for trace)
-         if ( ! ( reg_incompat_flags & REG_INCOMPAT_DMA_POLL ) )
-            pio_inbyte( CB_ASTAT );       // poll Alt Status
+         
+         // Poll alt stat register for command completion 
+         if ( !( reg_incompat_flags & REG_INCOMPAT_DMA_POLL ) )
+         {
+            status = pio_inbyte( CB_ASTAT );
+            
+            if ( ( status & ( CB_STAT_BSY | CB_STAT_RDY | CB_STAT_SKC | CB_STAT_DRQ ) ) == ( CB_STAT_RDY | CB_STAT_SKC ) )
+            {
+               break;                     // DSC and DRDY set with no DRQ, break and capture error status below
+            }                           
+         }
       }
       if ( int_intr_flag )                // interrupt ?
       {
@@ -782,6 +793,8 @@ static int exec_pci_ata_cmd( int dev,
 
    // All done.  The return values of this function are described in
    // ATAIO.H.
+
+   UpdateATACommandHistory();
 
    if ( reg_cmd_info.ec )
       return 1;

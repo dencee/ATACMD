@@ -59,8 +59,6 @@
 #define SECURITY_LEVEL_HIGH                     ( 0x00 )
 #define SECURITY_LEVEL_MAXIMUM                  ( 0x01 )
 
-#define GET_ID_DATA                             ( NULL )
-
 #define USER_PASSWORD                           ( 0x0000 )
 #define MASTER_PASSWORD                         ( 0x0001 )
 
@@ -69,6 +67,11 @@
 
 #define NORMAL_SECURE_ERASE_TIME                ( 1 )
 #define ENHANCED_SECURE_ERASE_TIME              ( 2 )
+
+#define DEFAULT_ERASE_TIME_IN_MINUTES           ( 5 * 60 )
+
+#define GET_ID_DATA                             ( NULL )
+#define UNSHARED_INTERRUPT                      ( 0 )
 
 #define LBA28_MODE                              ( 1 )
 #define LBA48_MODE                              ( 2 )
@@ -104,14 +107,49 @@ enum DeviceLocations_t
    LEGACY_IO_PORTS
 };
 
+//----------------------------[GLOBAL STRUCTURES]-------------------------------
+
+#pragma pack( push, 1 ) 
+typedef struct tSMARTData {
+   short revNum;                 // ofs 0-1
+   char wcAttribs[ 362 ];        // ofs 2-361
+   char offLineStat;             // ofs 362
+   char dstStat;                 // ofs 363
+   short offlineTimeSec;         // ofs 364-365
+   char vendSpec1;               // ofs 366
+   char offlineCap;              // ofs 367
+   short smartCap;               // ofs 368-369
+   char errorLogCap;             // ofs 370
+   char vendSpec2;               // ofs 371
+   char shortDSTPollMin;         // ofs 372
+   char extDSTPollMin;           // ofs 373
+   char ConveyDSTPollMin;        // ofs 374
+   char rsvd[ 11 ];              // ofs 375-385
+   char vendSpec3[ 125 ];        // ofs 386-510
+   char checksum;                // ofs 511
+} SMARTData_t;
+
+typedef struct tSmartAttribute {
+   char idNum;                   // ofs 0
+   short flag;                   // ofs 1-2
+   char curValue;                // ofs 3
+   char worstValue;              // ofs 4
+   unsigned short rawValueLo;    // ofs 5-6
+   unsigned short rawValueMid;   // ofs 7-8
+   unsigned short rawValueHi;    // ofs 9-10
+   char rsvd;                    // ofs 11
+} SMARTAttribute_t;   
+#pragma pack( pop )
+
 //----------------------------[GLOBAL VARIABLES]--------------------------------
 
 extern int ukDevicePosition;
-extern int ukInterruptNumber;
 extern int ukMulti;                 // Multi count for MULTIPLE commands
 extern int ukQuietMode;             // Controls all the printing by ATACMD.c
 extern int ukPrintOutput;           // Controls where everything is printed in ATACMD.c
 extern int ukTotalErrors;           // Global error counter for ATACMD.c
+extern int uIRQNum;                 // IRQ num of active/selected device
+extern int uActiveDeviceIndex;
 
 extern int ukReturnValue1;
 extern int ukReturnValue2;
@@ -138,11 +176,12 @@ extern char wcUserReply[5];
 // Pointers
 extern FILE* upLog;
 extern char* upPrintString;                  // The global print string for ATACMD.c
-extern unsigned char far* bufferPtr;
+extern unsigned char far* upBufferPtr;
 
 //--------------------------[FUNCTION DECLARATIONS]-----------------------------
 
 // Please add in alphabetical order
+extern void ATALIB_CleanUp( void );
 extern void ATALIB_Initialize( void );
 extern void ChangeDriveCapacityViaDCO( unsigned long gNewCapacity );
 extern void ChangeSecuritySupportViaDCO( int kSecurityTurnOn );
@@ -160,7 +199,11 @@ extern void CheckSecuritySupported( void );
 extern void CheckStatusAndErrorRegisters( unsigned char expectedStatus, char expectedError );
 extern void DeviceConfigurationIdentify( void );
 extern void DeviceConfigurationRestore( void );
+extern void DisableInterrupt( void );
 extern int DisplayConnectedATAStorageDevices( void );
+extern int EnableInterrupt( void );
+extern int EnableISADMA( void );
+extern int EnablePCIDMA( void );
 extern void HandleError( int kErrorFlag );
 extern void IdentifyDevice( void );
 extern int GetDriveSecurityState( void );
@@ -172,6 +215,7 @@ extern void GetMaxLBAFromIdentifyDevice( void );
 extern void GetMaxLBAFromReadNativeMax( void );
 extern void GetModelString( char* const pModelNum, unsigned int buffSizeInBytes );
 extern void GetSerialNumber( char* const pSerialNum, unsigned int buffSizeInBytes );
+extern int GetSmartAttributes( void );
 extern void PrintBuffer( void* pBuffer, int numberOfBytes, int printType );
 extern void PrintDataBufferHex( int numberOfBytes, int printType );
 extern void PrintATACMDGlobalOptions( void );
@@ -180,10 +224,11 @@ extern void PrintErrorMessage( void );
 extern void PrintFailMessage( void );
 extern void PrintFirmwareRevision( void );
 extern void PrintModelString( void );
+extern void PrintPCIDeviceInfo( void );
 extern void PrintSerialNumber( void );
 extern void PrintStatusAndErrorRegisters( void );
 extern void PrintString( int kPrintType );
-extern void ReadDMAEXT( unsigned long gLBA, unsigned long gNumberOfSectors );
+extern void ReadDMA( unsigned long gLBA, unsigned long gNumberOfSectors );
 extern void ReadSectors( unsigned int kCylinder, unsigned int kHead, unsigned int kSector, unsigned long gLBA, unsigned long gNumberOfSectors, int kReadMode );
 extern void ReadSectorsInCHS( unsigned int kCylinder, unsigned int kHead, unsigned int kSector, unsigned long gNumberOfSectors );
 extern void ReadSectorsInLBA28( unsigned long gLBA, unsigned long gNumberOfSectors );
@@ -201,12 +246,14 @@ extern int SendLBA28DataInCommand( int cmd, unsigned int feat, unsigned int secC
 extern int SendLBA48DataInCommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lbaLow, unsigned long lbaHigh );
 extern int SendLBA28DataOutCommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lba );
 extern int SendLBA48DataOutCommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lbaLow, unsigned long lbaHigh );
+extern int SendLBA28DMACommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lba );
+extern int SendLBA48DMACommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lbaLow, unsigned long lbaHigh );
 extern void SetActiveDevice( unsigned int deviceIndex );
 extern void SetBasePorts( int kSelectBasePort );
 extern void SetHPA( int kCommandType, int kVolatility, unsigned long gLBA );
 extern void SetMaxAddress( int kCommandType, int kVolatility, unsigned long gLBA );
 extern void SoftwareReset( void );
-extern void WriteDMAEXT( unsigned long gLBA, unsigned long gNumberOfSectors );
+extern void WriteDMA( unsigned long gLBA, unsigned long gNumberOfSectors );
 extern void WriteSectors( unsigned int kCylinder, unsigned int kHead, unsigned int kSector, unsigned long gLBA, unsigned long gNumberOfSectors, int kWriteMode );
 extern void WriteSectorsInCHS( unsigned int kCylinder, unsigned int kHead, unsigned int kSector, unsigned long gNumberOfSectors );
 extern void WriteSectorsInLBA28( unsigned long gLBA, unsigned long gNumberOfSectors );

@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>      // for tolower()
+#include <time.h>       // for clock() functions
 
 #ifndef   __TOOLS_H__
 #include   "tools.h"
@@ -26,7 +27,6 @@
 //              as scanf();
 //
 // Input:  pFilePointer   - input stream, usually stdin
-//
 // Output: None
 //------------------------------------------------------------------------------
 void DumpLine( FILE* pFilePointer )
@@ -44,7 +44,6 @@ void DumpLine( FILE* pFilePointer )
 //              specified string. Directly modifies the input string.
 //
 // Input:  pInputStr    - pointer to pointer of string
-//
 // Output: None
 //------------------------------------------------------------------------------
 void RemovePadding( char** ppInputStr ) // TODO: think about making this char** const ppInputStr -DMC
@@ -74,7 +73,6 @@ void RemovePadding( char** ppInputStr ) // TODO: think about making this char** 
 //              modify the input string directly.
 //
 // Input:  pInputStr    - pointer to string
-//
 // Output: None
 //------------------------------------------------------------------------------
 void RemoveTrailingSpaces( char* const pInputStr )
@@ -98,7 +96,6 @@ void RemoveTrailingSpaces( char* const pInputStr )
 // Input:  pStr1        - first string
 //         pStr2        - second string
 //         numToCompare - number of bytes to compare
-//
 // Output: NO_ERROR
 //------------------------------------------------------------------------------
 int StringCompareIgnoreCase( const char* pStr1, const char* pStr2, int numToCompare )
@@ -117,4 +114,31 @@ int StringCompareIgnoreCase( const char* pStr1, const char* pStr2, int numToComp
    }
 
    return ( result );
+}
+
+//------------------------------------------------------------------------------
+// Description: Place current time string in specified pointer. Time format is
+//              hh:mm:ss. This function is not re-entrant! DO NOT use in an
+//              interrupt handler routine!
+//
+// Input:  ppTimerStr         - äddress of pointer to hold time string
+// Output: None
+//------------------------------------------------------------------------------
+void GetTime( char** ppTimeStr )
+{
+   time_t rawTime;
+   struct tm* pTimeInfo;
+   
+   if ( ppTimeStr == NULL ) { printf( "ERROR: Input time string is NULL!" ); return; }
+   
+   time( &rawTime );
+   pTimeInfo = localtime( &rawTime );
+   
+   // Date format is: Www Mmm dd hh:mm:ss yyyy   
+   *ppTimeStr = ( asctime( pTimeInfo ) + strlen( "Www Mmm dd " ) );
+   
+   // remove trailing newline         
+   *( *ppTimeStr + strlen( "hh:mm:ss" ) ) = '\0';
+   
+   return;
 }

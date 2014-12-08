@@ -22,3 +22,4 @@ extern void DumpLine( FILE* pFilePointer );
 extern void RemovePadding( char** ppInputStr );
 extern void RemoveTrailingSpaces( char* const pInputStr );
 extern int StringCompareIgnoreCase( const char* pStr1, const char* pStr2, int numToCompare );
+extern void GetTime( char** ppTimeStr );

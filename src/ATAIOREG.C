@@ -75,17 +75,12 @@ int reg_incompat_flags;
 
 unsigned int GetLastATACommandIndex()
 {
-   if ( uNumberOfATACommands == 0 )
-   {
-      return 0;
-   }
-   else if ( ( uNumberOfATACommands % MAX_STORED_ATA_COMMANDS ) == 0 )
-   {
-      return ( MAX_STORED_ATA_COMMANDS - 1 );
-   }
-   else
-   {
-      return ( ( uNumberOfATACommands % MAX_STORED_ATA_COMMANDS ) - 1 );
+   if ( uNumberOfATACommands == 0 ){
+      return 0;                                                               // No commands yet
+   } else if ( ( uNumberOfATACommands % MAX_STORED_ATA_COMMANDS ) == 0 ) {
+      return ( MAX_STORED_ATA_COMMANDS - 1 );                                 // buffer looped around once
+   } else {
+      return ( ( uNumberOfATACommands % MAX_STORED_ATA_COMMANDS ) - 1 );      // somewhere in between
    }
 }
 
@@ -97,12 +92,9 @@ unsigned int GetLastATACommandIndex()
 
 struct ATACommandEntry_t* GetPreviousATACommand( unsigned int index )
 {
-   if ( index >= MAX_STORED_ATA_COMMANDS )
-   {
+   if ( index >= MAX_STORED_ATA_COMMANDS ) {
       return NULL;
-   }
-   else
-   {
+   } else {
       return ( &(tATACommands[ index ]) );
    }
 }
@@ -112,9 +104,6 @@ struct ATACommandEntry_t* GetPreviousATACommand( unsigned int index )
 // UpdateATACommandHistory() -
 //
 //*************************************************************
-
-void UpdateATACommandHistory( void );
-
 void UpdateATACommandHistory()
 {
    unsigned int nextCmdIndex = ( uNumberOfATACommands % MAX_STORED_ATA_COMMANDS );
@@ -172,6 +161,8 @@ static void reg_wait_poll( int we, int pe )
    }
    else
    {
+      int cntr = 0;
+      
       trc_llt( 0, 0, TRC_LLT_PNBSY );
       while ( 1 )
       {
@@ -186,6 +177,10 @@ static void reg_wait_poll( int we, int pe )
             trc_llt( 0, reg_cmd_info.ec, TRC_LLT_ERROR );
             break;
          }
+//         if ( cntr & 0x10000) {
+//             cntr = 0
+//         }
+         cntr++;
       }
    }
 

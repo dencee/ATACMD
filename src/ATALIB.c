@@ -94,11 +94,12 @@ struct StorageDevice_t {
 
 // Variables
 int ukDevicePosition;
-int ukInterruptNumber;
 int ukMulti       = 0;
 int ukQuietMode   = OFF;             // Controls all the printing by ATALIB.c
 int ukPrintOutput = PRINT_SCREEN;    // Controls where everything is printed in ATALIB.c
 int ukTotalErrors = 0;               // Global error counter for ATALIB.c
+int uIRQNum       = INVALID_VALUE;   // IRQ num of active/selected device
+int uActiveDeviceIndex = -1;
 
 int ukReturnValue1 = -1;
 int ukReturnValue2 = -1;
@@ -144,9 +145,7 @@ unsigned char far* upBufferPtr;
 //         head         - head number
 //         secNum       - sector number
 //
-// Output: NO_ERROR = successful
-//         ERROR    = unsuccessful
-//
+// Output: NO_ERROR = successful; ERROR = unsuccessful
 //------------------------------------------------------------------------------
 int SendNonDataCommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned int cylinder, unsigned int head, unsigned int secNum )
 {
@@ -161,9 +160,7 @@ int SendNonDataCommand( int cmd, unsigned int feat, unsigned int secCnt, unsigne
 //         secCnt       - sector count
 //         lba          - 32-bit lba
 //
-// Output: NO_ERROR = successful
-//         ERROR    = unsuccessful
-//
+// Output: NO_ERROR = successful; ERROR = unsuccessful
 //------------------------------------------------------------------------------
 int SendLBA28DataInCommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lba )
 {
@@ -182,9 +179,7 @@ int SendLBA28DataInCommand( int cmd, unsigned int feat, unsigned int secCnt, uns
 //         lba low      - lower 32-bit lba address
 //         lba high     - upper 32-bit lba address
 //
-// Output: NO_ERROR = successful
-//         ERROR    = unsuccessful
-//
+// Output: NO_ERROR = successful; ERROR = unsuccessful
 //------------------------------------------------------------------------------
 int SendLBA48DataInCommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lbaLow, unsigned long lbaHigh )
 {
@@ -202,12 +197,10 @@ int SendLBA48DataInCommand( int cmd, unsigned int feat, unsigned int secCnt, uns
 //         secCnt       - sector count
 //         lba          - 32-bit lba
 //
-// Output: NO_ERROR = successful
-//         ERROR    = unsuccessful
-//
+// Output: NO_ERROR = successful; ERROR = unsuccessful
 //------------------------------------------------------------------------------
 int SendLBA28DataOutCommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lba )
-{
+{  
    return ( reg_pio_data_out_lba28( ukDevicePosition, cmd, feat, secCnt, lba, FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ), secCnt, ukMulti ) );
 }
 
@@ -220,13 +213,90 @@ int SendLBA28DataOutCommand( int cmd, unsigned int feat, unsigned int secCnt, un
 //         lba low      - lower 32-bit lba address
 //         lba high     - upper 32-bit lba address
 //
-// Output: NO_ERROR = successful
-//         ERROR    = unsuccessful
-//
+// Output: NO_ERROR = successful; ERROR = unsuccessful
 //------------------------------------------------------------------------------
 int SendLBA48DataOutCommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lbaLow, unsigned long lbaHigh )
 {
    return ( reg_pio_data_out_lba48( ukDevicePosition, cmd, feat, secCnt, lbaHigh, lbaLow, FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ), secCnt, ukMulti ) );
+}
+
+//------------------------------------------------------------------------------
+// Description: Sends LBA 48 DMA command. PCI or ISA depending on I/O address.
+//
+// Input:  cmd          - command register
+//         feat         - features register
+//         secCnt       - sector count
+//         lba low      - lower 32-bit lba address
+//         lba high     - upper 32-bit lba address
+//
+// Output: NO_ERROR = successful; ERROR = unsuccessful
+//------------------------------------------------------------------------------
+int SendLBA48DMACommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lbaLow, unsigned long lbaHigh )
+{
+   int returnStatus;
+   
+   if ( ( pio_bmide_base_addr == INVALID_VALUE ) && ( ( pio_base_addr1 == LEGACY_PRIMARY_BASEPORT ) || ( pio_base_addr1 == LEGACY_SECONDARY_BASEPORT ) ) ) {
+      returnStatus = EnableISADMA();
+      
+      if ( returnStatus == NO_ERROR ) {
+         dma_isa_lba48( ukDevicePosition, cmd, feat, secCnt, lbaHigh, lbaLow, FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ), secCnt );
+      }
+   } else {
+      returnStatus = EnableInterrupt();
+      
+      if ( returnStatus == NO_ERROR ) {
+         returnStatus = EnablePCIDMA();
+      }
+      
+      if ( returnStatus == NO_ERROR ) {
+         dma_pci_lba48( ukDevicePosition, cmd, feat, secCnt, lbaHigh, lbaLow, FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ), secCnt );
+      
+         if ( ( pio_base_addr1 == LEGACY_PRIMARY_BASEPORT ) || ( pio_base_addr1 == LEGACY_SECONDARY_BASEPORT ) ) {
+            DisableInterrupt();
+         }      
+      }
+   }
+   
+   return ( returnStatus );
+}
+
+//------------------------------------------------------------------------------
+// Description: Sends LBA 28 DMA command. PCI or ISA depending on I/O address.
+//
+// Input:  cmd          - command register
+//         feat         - features register
+//         secCnt       - sector count
+//         lba          - 32-bit lba address
+//
+// Output: NO_ERROR = successful; ERROR = unsuccessful
+//------------------------------------------------------------------------------
+int SendLBA28DMACommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lba )
+{
+   int returnStatus;
+   
+   if ( ( pio_bmide_base_addr == INVALID_VALUE ) && ( ( pio_base_addr1 == LEGACY_PRIMARY_BASEPORT ) || ( pio_base_addr1 == LEGACY_SECONDARY_BASEPORT ) ) ) {
+      returnStatus = EnableISADMA();
+      
+      if ( returnStatus == NO_ERROR ) {
+         dma_isa_lba28( ukDevicePosition, cmd, feat, secCnt, lba, FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ), secCnt );
+      }
+   } else {
+      returnStatus = EnableInterrupt();
+      
+      if ( returnStatus == NO_ERROR ) {
+         returnStatus = EnablePCIDMA();
+      }
+      
+      if ( returnStatus == NO_ERROR ) {
+         dma_pci_lba28( ukDevicePosition, cmd, feat, secCnt, lba, FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ), secCnt );
+      
+         if ( ( pio_base_addr1 == LEGACY_PRIMARY_BASEPORT ) || ( pio_base_addr1 == LEGACY_SECONDARY_BASEPORT ) ) {
+            DisableInterrupt();
+         }      
+      }
+   }
+   
+   return ( returnStatus );
 }
 
 //------------------------------------------------------------------------------
@@ -322,6 +392,19 @@ void ATALIB_Initialize()
    upPrintString = (char *)malloc( NUMBER_OF_CHARACTERS_IN_DOS_LINE + 1 );
 
 } // End ATALIB_Initialize
+
+//------------------------------------------------------------------------------
+// Description: Restores interrupts and anything else before exiting program.
+//              THIS NEEDS TO BE CALLED AT THE END OF EVERY EVERY PROGRAM!
+//
+// Input:  None
+//
+// Output: None
+//------------------------------------------------------------------------------
+void ATALIB_CleanUp()
+{
+   DisableInterrupt();
+}
 
 //------------------------------------------------------------------------------
 // Description: Get the Serial Number from Identify Device words 10-19.
@@ -1299,14 +1382,12 @@ void ChangeDriveCapacityViaDCO (unsigned long gNewCapacity)
    gDefaultCapacity = ugReturnValue1;
 
    // New capacity can not be greater than the factory default capacity
-   if (gNewCapacity >= gDefaultCapacity)
-   {
+   if ( gNewCapacity >= gDefaultCapacity ) {
       // Update error information
       returnStatus = ERROR;
       ukTotalErrors++;
 
-      if (ukQuietMode == OFF)
-      {
+      if (ukQuietMode == OFF) {
          PrintFailMessage();
          sprintf( upPrintString, "Requested Capacity: %lu >= factory default capacity: %lu", gNewCapacity, gDefaultCapacity );
          PrintString (ukPrintOutput);
@@ -1337,8 +1418,7 @@ void ChangeDriveCapacityViaDCO (unsigned long gNewCapacity)
    buffer[ 13 ] = 0;
 
    // Calculate checksum for word 255 bits 8:15
-   for (kCheckSumCounter = 0; kCheckSumCounter <= 510; kCheckSumCounter++)
-   {
+   for ( kCheckSumCounter = 0; kCheckSumCounter <= 510; kCheckSumCounter++ ) {
       cCheckSum = cCheckSum + buffer[ kCheckSumCounter ];
    }
 
@@ -1348,8 +1428,7 @@ void ChangeDriveCapacityViaDCO (unsigned long gNewCapacity)
    // Replace old checksum with the new checksum
    buffer[ 511 ] = cCheckSum;
 
-   if (ukQuietMode == OFF)
-   {
+   if ( ukQuietMode == OFF ) {
       sprintf(upPrintString, "\n\nIssuing DEVICE CONFIGURATION SET command");
       PrintString (ukPrintOutput);
    }
@@ -1363,28 +1442,23 @@ void ChangeDriveCapacityViaDCO (unsigned long gNewCapacity)
       1, 0
       );
 
-   if ( ( returnStatus == ERROR ) && ( ukQuietMode == OFF ) )
-   {
+   if ( ( returnStatus == ERROR ) && ( ukQuietMode == OFF ) ) {
       ukTotalErrors++;
       sprintf( upPrintString, "\n" );
       PrintString( ukPrintOutput );
       PrintDataBufferHex( 512, PRINT_WORD );
       PrintFailMessage();
-   }
-   else
-   {
+   } else {
       // Check the returned capacity from read native max (EXT) has chagned
       GetMaxLBAFromReadNativeMax();
       gReadNativeMaxValue = ugReturnValue1;
 
       // Compare and report the expected and actual capacity
-      if (gNewCapacity != gReadNativeMaxValue)
-      {
+      if ( gNewCapacity != gReadNativeMaxValue ) {
          returnStatus = ERROR;
          ukTotalErrors++;
 
-         if (ukQuietMode == OFF)
-         {
+         if ( ukQuietMode == OFF ) {
             PrintFailMessage ();
 
             sprintf( upPrintString, "\n\nRequested capacity = %lu", gNewCapacity);
@@ -1412,8 +1486,7 @@ void DeviceConfigurationRestore ()
 {
    int returnStatus;
 
-   if (ukQuietMode == OFF)
-   {
+   if ( ukQuietMode == OFF ) {
       sprintf(upPrintString, "\n\nIssuing DEVICE CONFIGURATION RESTORE command");
       PrintString (ukPrintOutput);
    }
@@ -1448,12 +1521,9 @@ void CheckSecurityEnabled ()
    cIDWord128Low = *( buffer + ( 128 * 2 ) );
 
    // Check if drive security is enabled
-   if ((cIDWord128Low & SECURITY_ENABLED) == 0)
-   {
+   if ((cIDWord128Low & SECURITY_ENABLED) == 0) {
       kSecurityEnabledFlag = OFF;
-   }
-   else
-   {
+   } else {
       kSecurityEnabledFlag = ON;
    }
 
@@ -1481,12 +1551,9 @@ void CheckSecurityLocked ()
    cIDWord128Low = *( buffer + ( 128 * 2 ) );
 
    // Check if drive is locked
-   if ((cIDWord128Low & SECURITY_LOCKED) == 0)
-   {
+   if ((cIDWord128Low & SECURITY_LOCKED) == 0) {
       kSecurityLockedFlag = OFF;
-   }
-   else
-   {
+   } else {
       kSecurityLockedFlag = ON;
    }
 
@@ -1514,12 +1581,9 @@ void CheckSecurityFrozen ()
    cIDWord128Low = *( buffer + ( 128 * 2 ) );
 
    // Check if drive is frozen
-   if ((cIDWord128Low & SECURITY_FROZEN) == 0)
-   {
+   if ( ( cIDWord128Low & SECURITY_FROZEN ) == 0 ) {
       kSecurityFrozenFlag = OFF;
-   }
-   else
-   {
+   } else {
       kSecurityFrozenFlag = ON;
    }
 
@@ -1547,12 +1611,9 @@ void CheckSecurityCountExpired ()
    cIDWord128Low = *( buffer + ( 128 * 2 ) );
 
    // Check if drive security count is expired
-   if ((cIDWord128Low & SECURITY_COUNT_EXPIRED) == 0)
-   {
+   if ((cIDWord128Low & SECURITY_COUNT_EXPIRED) == 0) {
       kSecurityCountExpiredFlag = OFF;
-   }
-   else
-   {
+   } else {
       kSecurityCountExpiredFlag = ON;
    }
 
@@ -1580,12 +1641,9 @@ void CheckSecurityLevel ()
    cIDWord128High = *( buffer + ( 128 * 2 + 1 ) );
 
    // Check drive security level
-   if ((cIDWord128High & SECURITY_LEVEL_MAXIMUM) == 1)
-   {
+   if ((cIDWord128High & SECURITY_LEVEL_MAXIMUM) == 1) {
       kSecurityLevel = SECURITY_LEVEL_MAXIMUM;
-   }
-   else
-   {
+   } else {
       kSecurityLevel = SECURITY_LEVEL_HIGH;
    }
 
@@ -1610,23 +1668,18 @@ void SecurityUnlockPassword (const char* wcPasswordString, int kPasswordType)
    int kSecurityLockedFlag, returnStatus;
 
    // Clear the buffer
-   memset (buffer, 0, sizeof (buffer));
+   memset( buffer, 0, sizeof( buffer ) );
 
-   // Use user Password
-   if (kPasswordType == USER_PASSWORD)
-   {
-      *buffer = USER_PASSWORD;
-   }
-   else // Use master Password
-   {
-      *buffer = MASTER_PASSWORD;
+   if ( kPasswordType == USER_PASSWORD ) {
+      *buffer = USER_PASSWORD;         // Use user Password
+   } else {
+      *buffer = MASTER_PASSWORD;       // Use master Password
    }
 
    // Copy the password to word 1 of the buffer
-   strcpy (buffer + 2, wcPasswordString);
+   strcpy( buffer + 2, wcPasswordString );
 
-   if (ukQuietMode == OFF)
-   {
+   if ( ukQuietMode == OFF ) {
       sprintf(upPrintString, "\n\nIssuing SECURITY UNLOCK command");
       PrintString (ukPrintOutput);
    }
@@ -1668,21 +1721,16 @@ void SecurityDisablePassword (const char* wcPasswordString, int kPasswordType)
    // Clear the buffer
    memset (buffer, 0, sizeof (buffer));
 
-   // Use user Password
-   if (kPasswordType == USER_PASSWORD)
-   {
-      *buffer = USER_PASSWORD;
-   }
-   else // Use master Password
-   {
-      *buffer = MASTER_PASSWORD;
+   if ( kPasswordType == USER_PASSWORD ) {
+      *buffer = USER_PASSWORD;      // Use user Password
+   } else {
+      *buffer = MASTER_PASSWORD;    // Use master Password
    }
 
    // Copy the password to word 1 of the buffer
    strcpy (buffer + 2, wcPasswordString);
 
-   if (ukQuietMode == OFF)
-   {
+   if ( ukQuietMode == OFF ) {
       sprintf(upPrintString, "\n\nIssuing SECURITY DISABLE PASSWORD command");
       PrintString (ukPrintOutput);
    }
@@ -1722,40 +1770,31 @@ void SecuritySetPassword (const char* wcPasswordString, int kPasswordType, int k
    int returnStatus, kSecurityEnabledFlag;
 
    // Clear the buffer
-   memset (buffer, 0, sizeof (buffer));
+   memset( buffer, 0, sizeof( buffer ) );
 
-   // Use User Password
-   if (kPasswordType == USER_PASSWORD)
-   {
-      *buffer = USER_PASSWORD;
-   }
-   else // Use Master Password
-   {
-      *buffer = MASTER_PASSWORD;
+   if (kPasswordType == USER_PASSWORD) {
+      *buffer = USER_PASSWORD;                  // Use User Password
+   } else {
+      *buffer = MASTER_PASSWORD;                // Use Master Password
    }
 
-   // Set security level high
-   if (kSecurityLevel == USER_PASSWORD)
-   {
-      *(buffer + 1) = SECURITY_LEVEL_HIGH;
-   }
-   else // Set security level max
-   {
-      *(buffer + 1) = SECURITY_LEVEL_MAXIMUM;
+   if ( kSecurityLevel == USER_PASSWORD ) {
+      *( buffer + 1 ) = SECURITY_LEVEL_HIGH;      // Set security level high
+   } else {
+      *( buffer + 1 ) = SECURITY_LEVEL_MAXIMUM;   // Set security level max
    }
 
    // Copy the password to word 1 of the buffer
-   strcpy (buffer + 2, wcPasswordString);
+   strcpy( buffer + 2, wcPasswordString );
 
-   if (ukQuietMode == OFF)
-   {
+   if ( ukQuietMode == OFF ) {
       sprintf(upPrintString, "\n\nIssuing SECURITY SET PASSWORD command");
       PrintString (ukPrintOutput);
    }
 
-   // issue the security set password command
+   // Issue the security set password command
    returnStatus = reg_pio_data_out_lba28 (
-      ukDevicePosition, 0xf1,
+      ukDevicePosition, 0xF1,
       0, 0,
       0L,
       FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ),
@@ -1763,7 +1802,7 @@ void SecuritySetPassword (const char* wcPasswordString, int kPasswordType, int k
       );
 
    // Check if the drive security is enabled in ID
-   CheckSecurityEnabled ();
+   CheckSecurityEnabled();
    kSecurityEnabledFlag = ukReturnValue1;
 
    ukReturnValue1 = kSecurityEnabledFlag;
@@ -1780,7 +1819,7 @@ void SecuritySetPassword (const char* wcPasswordString, int kPasswordType, int k
 // Output: ukReturnValue1   - Secure erase time in minutes
 //         ukReturnValue2   - Enhanced secure erase time in minutes
 //------------------------------------------------------------------------------
-void GetEstimatedSecureEraseTimesInMin ()
+void GetEstimatedSecureEraseTimesInMin()
 {
    short int kSecureEraseTimeInMin, kEnhancedSecureEraseTimeInMin;
 
@@ -1788,15 +1827,13 @@ void GetEstimatedSecureEraseTimesInMin ()
    IdentifyDevice();
 
    // Get secure erase completion time from word 89
-   // Set pointer to 2 bytes (1 word) and dereference
-   kSecureEraseTimeInMin = *(short int *)(buffer + (89*2));
+   kSecureEraseTimeInMin = *(short int *)( buffer + ( 89 * 2 ) );
 
    // ATA-6 spec defines this value x 2 is required time in min
    kSecureEraseTimeInMin *= 2;
 
    // Get enhanced secure erase completion time from word 90
-   // Set pointer to 2 bytes (1 word) and dereference
-   kEnhancedSecureEraseTimeInMin = *(short int *)(buffer + (90*2));
+   kEnhancedSecureEraseTimeInMin = *(short int *)( buffer + ( 90 * 2 ) );
 
    // ATA-6 spec defines this value x 2 is required time in min
    kEnhancedSecureEraseTimeInMin *= 2;
@@ -1817,41 +1854,35 @@ void GetEstimatedSecureEraseTimesInMin ()
 // Output: ukReturnValue1       - 0 = Secure Erase successful
 //                                1 = Secure Erase unsuccessful
 //------------------------------------------------------------------------------
-void SecureErase (const char* wcPasswordString, int kPasswordType, int kEraseType)
+void SecureErase( const char* wcPasswordString, int kPasswordType, int kEraseType )
 {
    int returnStatus;
    unsigned int kWord0;
 
    // Clear the buffer
-   memset (buffer, 0, sizeof (buffer));
+   memset( buffer, 0, sizeof( buffer ) );
 
    // Copy the erase options to word 0 of the buffer
-   kWord0 = (kPasswordType | kEraseType);
+   kWord0 =( kPasswordType | kEraseType );
    *buffer = kWord0;
 
    // Copy the password to word 1 of the buffer
-   strcpy (buffer + 2, wcPasswordString);
+   strcpy( ( buffer + 2 ), wcPasswordString );
 
-   if (ukQuietMode == OFF)
-   {
-      sprintf(upPrintString, "\n\nIssuing SECURITY ERASE PREPARE command");
-      PrintString (ukPrintOutput);
+   if (ukQuietMode == OFF) {
+      sprintf( upPrintString, "\n\nIssuing SECURITY ERASE PREPARE command" );
+      PrintString( ukPrintOutput );
    }
 
-   // security erase prepare
-   returnStatus = reg_non_data_lba28 (
-      ukDevicePosition, 0xf3,
-      0, 0,
-      0L
-      );
+   // Security erase prepare
+   returnStatus = reg_non_data_lba28( ukDevicePosition, 0xf3, 0, 0, 0L );
 
-   if (ukQuietMode == OFF)
-   {
+   if (ukQuietMode == OFF) {
       sprintf(upPrintString, "\n\nIssuing SECURITY ERASE command");
       PrintString (ukPrintOutput);
    }
 
-   //Secure erase command
+   // Secure erase command
    returnStatus = reg_pio_data_out_lba28 (
       ukDevicePosition, 0xf4,
       0, 0,
@@ -1862,7 +1893,7 @@ void SecureErase (const char* wcPasswordString, int kPasswordType, int kEraseTyp
 
    ukReturnValue1 = returnStatus;
    return;
-} //End SecureErase
+} // End SecureErase
 /*
 void SetHighestUDMAMode ()
 {
@@ -2046,81 +2077,42 @@ void WriteSectorsInCHS (unsigned int kCylinder, unsigned int kHead, unsigned int
 //              transfer in 48-bit mode if supported, else 28-bit mode.  The
 //              UDMA mode must be set before using this command (SetUDMAMode).
 //
-//              *Note: Interrupt mode must be enabled before using this command.
-//                     int_enable_irq (unsigned int kIRQNumber)
-//
 // Input:  gLBA                 - LBA address to write
 //         kNumberOfSectors     - Number of sectors to write from starting LBA
 //
 // Output: ukReturnValue1       - NO_ERROR = Write successful
 //                                ERROR    = Write unsuccessful
 //------------------------------------------------------------------------------
-void WriteDMAEXT (unsigned long gLBA, unsigned long gNumberOfSectors)
+void WriteDMA( unsigned long lba, unsigned long numberOfSectors )
 {
-   int returnStatus, k48BitAddressingFlag;
-   unsigned int kFeaturesRegister, kSectorCountRegister;
-   unsigned int kLBALow, kLBAHigh;
+   int returnStatus;
+   unsigned int featuresRegister, sectorCountRegister;
+   unsigned int lbaHigh;
+   
+   // Configure the registers for the write DMA command
+   featuresRegister    = IGNORE_VALUE;
+   sectorCountRegister = numberOfSectors;
+   lbaHigh             = IGNORE_VALUE;
 
-   // Write DMA can only be executued if interrupt mode is enabled
-   if (int_use_intr_flag != OFF)
-   {
-      // Configure the registers for the write DMA command
-      kFeaturesRegister    = IGNORE_VALUE;
-      kSectorCountRegister = gNumberOfSectors;
-      kLBALow              = gLBA;
-      kLBAHigh             = IGNORE_VALUE;
-
-      // Check 48-bit addressing supported
-      Check48BitAddressingSupported ();
-      k48BitAddressingFlag = ukReturnValue1;
-
-      // Use write DMA EXT if drive supports 48-bit addressing
-      if (k48BitAddressingFlag == ON)
-      {
-//      returnStatus = dma_pci_config (bmcrBase);
-
-         if (ukQuietMode == OFF)
-         {
-            sprintf(upPrintString, "\n\nIssuing WRITE DMA EXT command");
-            PrintString (ukPrintOutput);
-         }
-
-         // Issue write DMA EXT command in 48-bit mode
-         returnStatus = dma_pci_lba48 (
-            ukDevicePosition, CMD_WRITE_DMA_EXT,
-            kFeaturesRegister, kSectorCountRegister,
-            kLBAHigh, kLBALow,
-            FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ),
-            gNumberOfSectors
-            );
-      }
-      else // Else use write DMA (non-EXT)
-      {
-
-         if (ukQuietMode == OFF)
-         {
-            sprintf(upPrintString, "\n\nIssuing WRITE DMA command");
-            PrintString (ukPrintOutput);
-         }
-
-         // Issue write DMA command in 28-bit mode
-         returnStatus = dma_pci_lba28 (
-            ukDevicePosition, CMD_WRITE_DMA,
-            kFeaturesRegister, kSectorCountRegister,
-            kLBALow,
-            FP_SEG (upBufferPtr), FP_OFF (upBufferPtr),
-            gNumberOfSectors
-            );
-      } // End 48-bit addressing check
+   if (ukQuietMode == OFF) {
+      sprintf(upPrintString, "\n\nIssuing WRITE DMA EXT command");
+      PrintString( ukPrintOutput );
    }
-   else // Interrupt mode not enabled
-   {
-      returnStatus = ERROR;
-   } // End interrupt mode check
+
+   returnStatus = SendLBA48DMACommand( CMD_WRITE_DMA_EXT, featuresRegister, sectorCountRegister, lba, lbaHigh );
+
+   if ( returnStatus == ERROR ) {    
+      if ( ukQuietMode == OFF ) {
+         sprintf( upPrintString, "\n\nIssuing WRITE DMA command" );
+         PrintString( ukPrintOutput );
+      }
+
+      returnStatus = SendLBA28DMACommand( CMD_WRITE_DMA, featuresRegister, sectorCountRegister, lba );
+   }
 
    ukReturnValue1 = returnStatus;
    return;
-} // WriteDMAEXT
+} // WriteDMA
 
 //------------------------------------------------------------------------------
 // Description: Read n number of sectors starting a specific CHS or LBA.
@@ -2290,78 +2282,38 @@ void ReadSectorsInCHS (unsigned int kCylinder, unsigned int kHead, unsigned int 
 //              transfer in 48-bit mode if supported, else 28-bit mode.  The
 //              UDMA mode must be set before using this command (SetUDMAMode).
 //
-//              *Note: Interrupt mode must be enabled before using this command.
-//                     int_enable_irq (unsigned int kIRQNumber)
-//
 // Input:  gLBA                 - LBA address to read
 //         kNumberOfSectors     - Number of sectors to read from starting LBA
 //
 // Output: ukReturnValue1       - NO_ERROR = Read successful
 //                                ERROR    = Read unsuccessful
 //------------------------------------------------------------------------------
-void ReadDMAEXT (unsigned long gLBA, unsigned long gNumberOfSectors)
+void ReadDMA( unsigned long lba, unsigned long numberOfSectors )
 {
-   int returnStatus, k48BitAddressingFlag;
-   unsigned int kFeaturesRegister, kSectorCountRegister;
-   unsigned int kLBALow, kLBAHigh;
+   int returnStatus;
+   unsigned int featuresRegister, sectorCountRegister;
+   unsigned long lbaHigh;
 
-   // Write DMA can only be executued if interrupt mode is enabled
-   if (int_use_intr_flag != OFF)
-   {
+   // Configure the registers for the read DMA command
+   featuresRegister    = IGNORE_VALUE;
+   sectorCountRegister = numberOfSectors;
+   lbaHigh             = IGNORE_VALUE;
 
-//      returnStatus = dma_pci_config (bmcrBase);
-
-      // Configure the registers for the read DMA command
-      kFeaturesRegister    = IGNORE_VALUE;
-      kSectorCountRegister = gNumberOfSectors;
-      kLBALow              = gLBA;
-      kLBAHigh             = IGNORE_VALUE;
-
-      // Check 48-bit addressing supported
-      Check48BitAddressingSupported ();
-      k48BitAddressingFlag = ukReturnValue1;
-
-      // Use read DMA EXT if drive supports 48-bit addressing
-      if (k48BitAddressingFlag == ON)
-      {
-         if (ukQuietMode == OFF)
-         {
-            sprintf(upPrintString, "\n\nIssuing READ DMA EXT command");
-            PrintString (ukPrintOutput);
-         }
-
-         // Issue read DMA EXT command in 48-bit mode
-         returnStatus = dma_pci_lba48 (
-            ukDevicePosition, CMD_READ_DMA_EXT,
-            kFeaturesRegister, kSectorCountRegister,
-            kLBAHigh, kLBALow,
-            FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ),
-            gNumberOfSectors
-            );
-      }
-      else // Else use read DMA (non-EXT)
-      {
-
-         if (ukQuietMode == OFF)
-         {
-            sprintf(upPrintString, "\n\nIssuing READ DMA command");
-            PrintString (ukPrintOutput);
-         }
-
-         // Issue read DMA command in 28-bit mode
-         returnStatus = dma_pci_lba28 (
-            ukDevicePosition, CMD_READ_DMA,
-            kFeaturesRegister, kSectorCountRegister,
-            kLBALow,
-            FP_SEG (upBufferPtr), FP_OFF (upBufferPtr),
-            gNumberOfSectors
-            );
-      } // End 48-bit addressing check
+   if ( ukQuietMode == OFF ) {
+      sprintf( upPrintString, "\n\nIssuing READ DMA EXT command" );
+      PrintString( ukPrintOutput );
    }
-   else // Interrupt mode not enabled
-   {
-      returnStatus = ERROR;
-   } // End interrupt mode check
+
+   returnStatus = SendLBA48DMACommand( CMD_READ_DMA_EXT, featuresRegister, sectorCountRegister, lba, lbaHigh );
+
+   if ( returnStatus == ERROR ) {    
+      if ( ukQuietMode == OFF ) {
+         sprintf( upPrintString, "\n\nIssuing READ DMA command" );
+         PrintString( ukPrintOutput );
+      }
+
+      returnStatus = SendLBA28DMACommand( CMD_READ_DMA, featuresRegister, sectorCountRegister, lba );
+   }
 
    ukReturnValue1 = returnStatus;
    return;
@@ -2577,7 +2529,7 @@ void PrintString (int kPrintType)
 //
 // Output: None
 //------------------------------------------------------------------------------
-void PrintFailMessage ()
+void PrintFailMessage()
 {
    // DOS window is 80 characters across, this print line is 78 characters across
    sprintf(upPrintString,
@@ -2634,15 +2586,13 @@ void PrintBuffer( void* pInBuffer, int numberOfBytes, int printType )
    {
       case PRINT_BYTE:
 
-         printf( "%02X ", *pBuffer );
+         printf( "000h: %02X ", *pBuffer );
 
          for ( byte = 1; byte < numberOfBytes; byte++ )
          {
-            // 16 sets of 4 hex digits plus 1 for the space ((16*4)+(16*1)) = 80
-            // with 1 byte = 2 hex digits
-            if ( ( byte % 26 ) == 0 )
-            {
-               printf( "\n" );
+            // 2x + ( x - 1 ) <= ( 80 - 8 ); x <= 24
+            if ( ( byte % 24 ) == 0 ) {
+               printf( "\n%04hX: ", byte );
             }
 
             printf( "%02X ", *( pBuffer + byte ) );
@@ -2656,12 +2606,10 @@ void PrintBuffer( void* pInBuffer, int numberOfBytes, int printType )
 
          for ( word = 1; word < ( numberOfBytes / 2 ); word++ )
          {
-            if ( ( word % 16 ) == 0 )
-            {
+            // 4x + ( x - 1 ) <= 80; x <= 16
+            if ( ( word % 16 ) == 0 ) {
                printf( "\n" );
-            }
-            else
-            {
+            } else {
                printf( " " );
             }
 
@@ -2670,8 +2618,7 @@ void PrintBuffer( void* pInBuffer, int numberOfBytes, int printType )
          }
 
          // Print remainder
-         if ( ( numberOfBytes % 2 ) == 1 )
-         {
+         if ( ( numberOfBytes % 2 ) == 1 ) {
             printf( " 00%02X", *( pBuffer + numberOfBytes - 1 ) );
          }
          break;
@@ -2707,8 +2654,7 @@ int GetIDWord( char* pIDBuffer, unsigned int byteOffset )
 {
    int word;
 
-   if ( pIDBuffer == GET_ID_DATA )
-   {
+   if ( pIDBuffer == GET_ID_DATA ) {
       IdentifyDevice();
    }
 
@@ -2975,7 +2921,6 @@ void SendATACommand( long int* pAtaRegs )
 
       case CMD_IDENTIFY_DEVICE:
       case CMD_READ_BUFFER:
-      case CMD_READ_DMA:
       case CMD_READ_MULTIPLE:
       case CMD_READ_SECTORS:
       case CMD_READ_VERIFY_SECTORS:
@@ -2989,6 +2934,39 @@ void SendATACommand( long int* pAtaRegs )
       }
 
       case CMD_READ_DMA_EXT:
+      case CMD_READ_DMA:
+      {      
+         // -----------------------------------------------------------------
+         // PCI DMA read commands
+         // -----------------------------------------------------------------
+
+         memset( buffer, 0, sizeof( buffer ) );
+         
+         if ( cmd == CMD_READ_DMA_EXT ) {
+            SendLBA48DMACommand( cmd, feat, secCnt, lbaLow, lbaHigh );
+         } else {
+            SendLBA28DMACommand( cmd, feat, secCnt, lbaLow );
+         }
+      
+         break;
+      }
+      
+      case CMD_WRITE_DMA:
+      case CMD_WRITE_DMA_EXT:
+      {
+         // -----------------------------------------------------------------
+         // PCI DMA write commands
+         // -----------------------------------------------------------------
+
+         if ( cmd == CMD_WRITE_DMA_EXT ) {
+            SendLBA48DMACommand( cmd, feat, secCnt, lbaLow, lbaHigh );
+         } else {
+            SendLBA28DMACommand( cmd, feat, secCnt, lbaLow );
+         }
+      
+         break;
+      }
+
       case CMD_READ_LOG_EXT:
       case CMD_READ_MULTIPLE_EXT:
       case CMD_READ_SECTORS_EXT:
@@ -3004,7 +2982,6 @@ void SendATACommand( long int* pAtaRegs )
 
       case CMD_WRITE_SECTORS:
       case CMD_WRITE_BUFFER:
-      case CMD_WRITE_DMA:
       case CMD_WRITE_MULTIPLE:
       case CMD_WRITE_VERIFY:
       {
@@ -3016,7 +2993,6 @@ void SendATACommand( long int* pAtaRegs )
          break;
       }
 
-      case CMD_WRITE_DMA_EXT:
       case CMD_WRITE_DMA_FUA_EXT:
       case CMD_WRITE_LOG_EXT:
       case CMD_WRITE_MULTIPLE_EXT:
@@ -3046,6 +3022,122 @@ void SendATACommand( long int* pAtaRegs )
 }
 
 //------------------------------------------------------------------------------
+// Description: Enable interrupt mode for the device.
+//
+// Input:  None
+//
+// Output: NO_ERROR, ERROR
+//------------------------------------------------------------------------------
+int EnableInterrupt()
+{
+   int error = NO_ERROR;
+
+   if ( int_use_intr_flag != TRUE ) {
+      // Only enable if not already enabled
+
+      // All values must be valid before enabling
+      if ( ( uIRQNum != INVALID_VALUE ) && ( pio_bmide_base_addr != INVALID_VALUE ) && ( pio_base_addr1 != INVALID_VALUE ) ) {
+         error = int_enable_irq( UNSHARED_INTERRUPT, uIRQNum, ( pio_bmide_base_addr + 2 ), ( pio_base_addr1 + 7 ) );
+      } else {
+         error = ERROR;
+      }
+   }
+
+   if ( ukQuietMode == OFF ) {
+      if ( error == NO_ERROR ) {
+         sprintf( upPrintString, "\n\nINT enabled [IRQ %d, BMIDE addr %Xh, IO addr %Xh]", uIRQNum, pio_bmide_base_addr, pio_base_addr1 );
+         PrintString( ukPrintOutput );            
+      } else {
+         sprintf( upPrintString, "\n\nERROR: INT enable failed [IRQ %d, BMIDE addr %Xh, IO addr %Xh]", uIRQNum, pio_bmide_base_addr, pio_base_addr1 );
+         PrintString( ukPrintOutput );            
+      }
+   }
+
+   return ( error );
+}
+
+//------------------------------------------------------------------------------
+// Description: Restore original interrupt handler only if ours was installed.
+//              Must do this before exiting out of program!
+//
+// Input:  None
+//
+// Output: None
+//------------------------------------------------------------------------------
+void DisableInterrupt()
+{
+   int_disable_irq();
+}
+
+//------------------------------------------------------------------------------
+// Description: Enable PCI DMA for the device.
+//
+// Input:  None
+//
+// Output: NO_ERROR, ERROR
+//------------------------------------------------------------------------------
+int EnablePCIDMA()
+{
+   int error;
+
+   if ( dma_pci_enabled_flag != 0 ) {
+      error = NO_ERROR;                                     // already enabled
+   } else if ( pio_bmide_base_addr != INVALID_VALUE ) {
+      error = dma_pci_config( pio_bmide_base_addr );        // not enabled, so enable
+   } else {
+      error = ERROR;                                        // invalid bmide address, can't enable
+   }
+
+   if ( ukQuietMode == OFF ) {
+      if ( error == NO_ERROR ) {
+         sprintf( upPrintString, "\n\nPCI DMA enabled" );
+         PrintString( ukPrintOutput );      
+      } else {
+         sprintf( upPrintString, "\n\nERROR: Unable to enable PCI DMA" );
+         PrintString( ukPrintOutput );
+      }
+   }
+
+   if ( error == NO_ERROR ) {
+      if ( ( pio_base_addr1 == LEGACY_PRIMARY_BASEPORT ) || ( pio_base_addr1 == LEGACY_SECONDARY_BASEPORT ) ) {
+         reg_incompat_flags &= ~REG_INCOMPAT_DMA_POLL;   // Poll alt stat reg
+      } else {
+         reg_incompat_flags |= REG_INCOMPAT_DMA_POLL;    // Don't poll alt stat reg
+      }
+   }
+
+   return ( error );
+}
+
+//------------------------------------------------------------------------------
+// Description: Enable ISA DMA for the device.
+//
+// Input:  None
+//
+// Output: NO_ERROR, ERROR
+//------------------------------------------------------------------------------
+int EnableISADMA()
+{
+   int error = ERROR;
+   
+   if ( ( pio_base_addr1 == LEGACY_PRIMARY_BASEPORT ) || ( pio_base_addr1 == LEGACY_SECONDARY_BASEPORT ) ) {
+      error = dma_isa_config( 5 );
+   }
+   
+   if ( ukQuietMode == OFF ) {
+      if ( error == NO_ERROR ) {
+         sprintf( upPrintString, "\n\nISA DMA enabled" );
+         PrintString( ukPrintOutput );      
+      } else {
+         sprintf( upPrintString, "\n\nERROR: Unable to enable ISA DMA" );
+         PrintString( ukPrintOutput );
+      }
+   }
+   
+   return ( error );
+}
+
+//------------------------------------------------------------------------------
 // Description: Scans the entire PCI bus for storage controllers, then searches
 //              for ATA devices. Also searches legacy I/O baseports 170h and
 //              370h.
@@ -3062,10 +3154,12 @@ unsigned int ScanForStorageDevices()
 {
    unsigned int busNum, devNum, funNum;
    unsigned int currDeviceIdx, numATADev, totalDevicesFound, devPos;
-   unsigned int subClassCode;
+   unsigned int subClassCode, legacyChannelPriFound, legacyChannelSecFound;
    unsigned int cmdBase, ctrlBase, bmideBase, irqNum;
    long tempCommandTimeout;
 
+   legacyChannelPriFound = FALSE;
+   legacyChannelSecFound = FALSE;
    currDeviceIdx = 0;
    totalDevicesFound = 0;
    cmdBase   = 0xFFFF;
@@ -3109,21 +3203,17 @@ unsigned int ScanForStorageDevices()
 
                for ( devPos = PRIMARY_CHANNEL; devPos <= SECONDARY_CHANNEL; devPos++ )
                {
-                  if ( devPos == PRIMARY_CHANNEL )
-                   {
+                  if ( devPos == PRIMARY_CHANNEL ) {
                      cmdBase  = GetPciWord( busNum, devNum, funNum, offsetof( PCIRegisters_t, BAR0 ) );
                      ctrlBase = GetPciWord( busNum, devNum, funNum, offsetof( PCIRegisters_t, BAR1 ) );
-                  }
-                  else
-                  {
+                  } else {
                      cmdBase  = GetPciWord( busNum, devNum, funNum, offsetof( PCIRegisters_t, BAR2 ) );
                      ctrlBase = GetPciWord( busNum, devNum, funNum, offsetof( PCIRegisters_t, BAR3 ) );
                   }
 
                   bmideBase = GetPciWord( busNum, devNum, funNum, offsetof( PCIRegisters_t, BAR4 ) );
 
-                  if ( ( cmdBase == 0xFFFF ) || ( ctrlBase == 0xFFFF ) || ( bmideBase == 0xFFFF ) )
-                  {
+                  if ( ( cmdBase == 0xFFFF ) || ( ctrlBase == 0xFFFF ) || ( bmideBase == 0xFFFF ) ) {
                      continue;
                   }
 
@@ -3136,8 +3226,7 @@ unsigned int ScanForStorageDevices()
                   ctrlBase -= 4;
 
                   // -DMC Look into this step
-                  if ( devPos == SECONDARY_CHANNEL )
-                  {
+                  if ( devPos == SECONDARY_CHANNEL ) {
                      bmideBase += 8;
                   }
 
@@ -3155,14 +3244,20 @@ unsigned int ScanForStorageDevices()
                   // Scan for ATA devices
                   numATADev = reg_config();
 
-                  if ( numATADev < 1 )
-                  {
+                  if ( numATADev < 1 ) {
                      continue;
                   }
 
-                  if ( ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) || ( reg_config_info[1] == REG_CONFIG_TYPE_ATA ) )
-                  {
-                     // ATA device on first or second postion
+                  if ( ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) || ( reg_config_info[1] == REG_CONFIG_TYPE_ATA ) ) {
+                     // ATA device FOUND on first or second postion
+
+                     if ( cmdBase == LEGACY_PRIMARY_BASEPORT ) {
+                        legacyChannelPriFound = TRUE;
+                     }
+                     
+                     if ( cmdBase == LEGACY_SECONDARY_BASEPORT ) {
+                        legacyChannelSecFound = TRUE;
+                     }
 
                      wtStorageDevices[ currDeviceIdx ].valid = VALID_DEVICE_ENTRY;
                      wtStorageDevices[ currDeviceIdx ].busNum = busNum;
@@ -3187,68 +3282,73 @@ unsigned int ScanForStorageDevices()
    // Legacy IO ports: scan primary channel
    // --------------------------------------------------------------------------
 
-   cmdBase   = 0x1F0;
-   ctrlBase  = 0x3F0;
-   bmideBase = IGNORE_VALUE;
-   irqNum    = 14;
-
-   // Map ATA I/O regs to I/O ports
-   pio_set_iobase_addr( cmdBase, ctrlBase, bmideBase );
-
-   // Scan for ATA devices
-   numATADev = reg_config();
-
-   if ( ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) || ( reg_config_info[1] == REG_CONFIG_TYPE_ATA ) )
-   {
-      // Master or slave device found
-
-      wtStorageDevices[ currDeviceIdx ].valid = VALID_DEVICE_ENTRY;
-      wtStorageDevices[ currDeviceIdx ].busNum = IGNORE_VALUE;
-      wtStorageDevices[ currDeviceIdx ].devNum = IGNORE_VALUE;
-      wtStorageDevices[ currDeviceIdx ].funNum = IGNORE_VALUE;
-      wtStorageDevices[ currDeviceIdx ].cmdBase = cmdBase;
-      wtStorageDevices[ currDeviceIdx ].ctrlBase = ctrlBase;
-      wtStorageDevices[ currDeviceIdx ].bmideBase = bmideBase;
-      wtStorageDevices[ currDeviceIdx ].irqNum = irqNum;
-      wtStorageDevices[ currDeviceIdx ].devPos = PRIMARY_CHANNEL;
-      wtStorageDevices[ currDeviceIdx ].masterSlave = ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) ? MASTER : SLAVE;
-      currDeviceIdx = ( ( currDeviceIdx + 1 ) % MAX_STORAGE_DEVICES );
-      totalDevicesFound++;
+   if ( legacyChannelPriFound == FALSE ) {
+      cmdBase   = LEGACY_PRIMARY_BASEPORT;
+      ctrlBase  = 0x3F0;
+      bmideBase = IGNORE_VALUE;
+      irqNum    = 14;
+      
+      // Map ATA I/O regs to I/O ports
+      pio_set_iobase_addr( cmdBase, ctrlBase, bmideBase );
+      
+      // Scan for ATA devices
+      numATADev = reg_config();
+      
+      if ( ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) || ( reg_config_info[1] == REG_CONFIG_TYPE_ATA ) ) {
+         // Master or slave device found
+      
+         wtStorageDevices[ currDeviceIdx ].valid = VALID_DEVICE_ENTRY;
+         wtStorageDevices[ currDeviceIdx ].busNum = IGNORE_VALUE;
+         wtStorageDevices[ currDeviceIdx ].devNum = IGNORE_VALUE;
+         wtStorageDevices[ currDeviceIdx ].funNum = IGNORE_VALUE;
+         wtStorageDevices[ currDeviceIdx ].cmdBase = cmdBase;
+         wtStorageDevices[ currDeviceIdx ].ctrlBase = ctrlBase;
+         wtStorageDevices[ currDeviceIdx ].bmideBase = bmideBase;
+         wtStorageDevices[ currDeviceIdx ].irqNum = irqNum;
+         wtStorageDevices[ currDeviceIdx ].devPos = PRIMARY_CHANNEL;
+         wtStorageDevices[ currDeviceIdx ].masterSlave = ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) ? MASTER : SLAVE;
+         currDeviceIdx = ( ( currDeviceIdx + 1 ) % MAX_STORAGE_DEVICES );
+         totalDevicesFound++;
+      }
    }
 
    // --------------------------------------------------------------------------
    // Legacy IO ports: scan secondary channel
    // --------------------------------------------------------------------------
 
-   cmdBase   = 0x170;
-   ctrlBase  = 0x370;
-   bmideBase = IGNORE_VALUE;
-   irqNum    = 15;
-
-   // Map ATA I/O regs to I/O ports
-   pio_set_iobase_addr( cmdBase, ctrlBase, bmideBase );
-
-   // Scan for ATA devices
-   numATADev = reg_config();
-
-   if ( ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) || ( reg_config_info[1] == REG_CONFIG_TYPE_ATA ) )
-   {
-      // Master or slave device found
-
-      wtStorageDevices[ currDeviceIdx ].valid = VALID_DEVICE_ENTRY;
-      wtStorageDevices[ currDeviceIdx ].busNum = IGNORE_VALUE;
-      wtStorageDevices[ currDeviceIdx ].devNum = IGNORE_VALUE;
-      wtStorageDevices[ currDeviceIdx ].funNum = IGNORE_VALUE;
-      wtStorageDevices[ currDeviceIdx ].cmdBase = cmdBase;
-      wtStorageDevices[ currDeviceIdx ].ctrlBase = ctrlBase;
-      wtStorageDevices[ currDeviceIdx ].bmideBase = bmideBase;
-      wtStorageDevices[ currDeviceIdx ].irqNum = irqNum;
-      wtStorageDevices[ currDeviceIdx ].devPos = SECONDARY_CHANNEL;
-      wtStorageDevices[ currDeviceIdx ].masterSlave = ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) ? MASTER : SLAVE;
-      currDeviceIdx = ( ( currDeviceIdx + 1 ) % MAX_STORAGE_DEVICES );
-      totalDevicesFound++;
+   if ( legacyChannelSecFound == FALSE ) {
+      cmdBase   = LEGACY_SECONDARY_BASEPORT;
+      ctrlBase  = 0x370;
+      bmideBase = IGNORE_VALUE;
+      irqNum    = 15;
+      
+      // Map ATA I/O regs to I/O ports
+      pio_set_iobase_addr( cmdBase, ctrlBase, bmideBase );
+      
+      // Scan for ATA devices
+      numATADev = reg_config();
+      
+      if ( ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) || ( reg_config_info[1] == REG_CONFIG_TYPE_ATA ) ) {
+         // Master or slave device found
+      
+         wtStorageDevices[ currDeviceIdx ].valid = VALID_DEVICE_ENTRY;
+         wtStorageDevices[ currDeviceIdx ].busNum = IGNORE_VALUE;
+         wtStorageDevices[ currDeviceIdx ].devNum = IGNORE_VALUE;
+         wtStorageDevices[ currDeviceIdx ].funNum = IGNORE_VALUE;
+         wtStorageDevices[ currDeviceIdx ].cmdBase = cmdBase;
+         wtStorageDevices[ currDeviceIdx ].ctrlBase = ctrlBase;
+         wtStorageDevices[ currDeviceIdx ].bmideBase = bmideBase;
+         wtStorageDevices[ currDeviceIdx ].irqNum = irqNum;
+         wtStorageDevices[ currDeviceIdx ].devPos = SECONDARY_CHANNEL;
+         wtStorageDevices[ currDeviceIdx ].masterSlave = ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) ? MASTER : SLAVE;
+         currDeviceIdx = ( ( currDeviceIdx + 1 ) % MAX_STORAGE_DEVICES );
+         totalDevicesFound++;
+      }
    }
 
+   // --------------------------------------------------------------------------
+   // Restore original settings
+   // --------------------------------------------------------------------------
    tmr_set_command_timeout( tempCommandTimeout );
 
    return ( totalDevicesFound );
@@ -3288,6 +3388,11 @@ void SetActiveDevice( unsigned int deviceIndex )
    bmideBase = wtStorageDevices[ deviceIndex ].bmideBase;
 
    ukDevicePosition = wtStorageDevices[ deviceIndex ].masterSlave;
+   uIRQNum = wtStorageDevices[ deviceIndex ].irqNum;
+   dma_pci_enabled_flag = 0;
+
+   // Restore interrupt handler if it was modified with previous device's IRQ number
+   DisableInterrupt();
 
    // Align the I/O ports to the driver's variables
    pio_set_iobase_addr( cmdBase, ctrlBase, bmideBase );
@@ -3295,6 +3400,8 @@ void SetActiveDevice( unsigned int deviceIndex )
    // Let the driver know which devices are attached
    reg_config();
 
+   uActiveDeviceIndex = deviceIndex;
+   
    return;
 } // End SetActiveDevice
 
@@ -3362,12 +3469,7 @@ int DisplayConnectedATAStorageDevices()
       fflush( stdout );
       scanf( "%d", &selectedDev );
 
-      {
-         int ch;
-         // Break when EOF or newline is reached to consume any
-         // additional chars in stdin
-         while ( ( ( ch = fgetc( stdin ) ) != EOF ) && ( ch != '\n' ) ) {}
-      }
+      DumpLine( stdin );
 
       if ( ( selectedDev > 0 ) && ( selectedDev < ( numDevices + 1 ) ) )
       {
@@ -3396,3 +3498,41 @@ int DisplayConnectedATAStorageDevices()
 
    return ( exitProgram );
 } // End DisplayConnectedATAStorageDevices
+
+//------------------------------------------------------------------------------
+// Description: Prints PCI info about active device.
+//
+// Input:  None
+// Output: None
+//------------------------------------------------------------------------------
+void PrintPCIDeviceInfo()
+{
+   printf( "pci bus/dev/fun ....: %Xh\n", wtStorageDevices[ uActiveDeviceIndex ].busNum, wtStorageDevices[ uActiveDeviceIndex ].devNum, wtStorageDevices[ uActiveDeviceIndex ].funNum );
+   printf( "command base addr ..: %Xh\n", wtStorageDevices[ uActiveDeviceIndex ].cmdBase );
+   printf( "ctrl base addr .....: %Xh\n", wtStorageDevices[ uActiveDeviceIndex ].ctrlBase );
+   printf( "bmide base addr ....: %Xh\n", wtStorageDevices[ uActiveDeviceIndex ].bmideBase );
+   printf( "IRQ number .........: %d\n", wtStorageDevices[ uActiveDeviceIndex ].irqNum );
+   printf( "master/slave .......: %d (M=0/S=1)\n", wtStorageDevices[ uActiveDeviceIndex ].masterSlave );
+   printf( "device position ....: %d\n", wtStorageDevices[ uActiveDeviceIndex ].devPos );
+}
+
+int GetSmartAttributes()
+{
+   int returnStatus;
+   
+   if ( ukQuietMode == OFF ) {
+      sprintf( upPrintString, "\n\nIssuing SMART READ DATA command" );
+      PrintString( ukPrintOutput );
+   }
+   
+   // Clear the buffer so there's no remnant data in buffer before reading
+   memset( buffer, 0, sizeof( buffer ) );
+
+   returnStatus = reg_pio_data_in_lba28( ukDevicePosition,
+      CMD_SMART, SMART_READ_DATA,
+      0, 0xC24F00,
+      FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ),
+      1, 0 );
+
+   return ( returnStatus );
+}

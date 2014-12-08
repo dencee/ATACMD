@@ -1,6 +1,6 @@
 Open Watcom Linker Version 1.9
 Portions Copyright (c) 1985-2002 Sybase, Inc. All Rights Reserved.
-Created on:       14/11/03 13:23:00
+Created on:       14/11/05 16:42:14
 Executable Image: AtaTest.exe
 creating a DOS executable
 
@@ -791,4 +791,4 @@ C:\WATCOM/lib286/dos\clibl.lib
 Stack size:  0800 (2048.)
 Memory size:  00023e20 (146976.)
 Entry point address: 0d0b:0e0e
-Link time: 00:00.31
+Link time: 00:00.47

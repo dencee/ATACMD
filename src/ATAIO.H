@@ -352,6 +352,7 @@ extern unsigned char far * dma_pci_largeIoBufPtr;   // LARGE PRD I/O address
 
 extern unsigned long far * dma_pci_prd_ptr;  // current PRD buffer address
 extern int dma_pci_num_prd;                  // current number of PRD entries
+extern int dma_pci_enabled_flag;
 
 extern unsigned int GetPciWord( unsigned int busNum, unsigned int devNum, unsigned int funNum, unsigned int regNum );
 extern unsigned int GetPciClassCode( unsigned int busNum, unsigned int devNum, unsigned int funNum );
@@ -634,6 +635,7 @@ extern int reg_incompat_flags;   // see #defines...
 
 extern unsigned int GetLastATACommandIndex( void );
 extern struct ATACommandEntry_t* GetPreviousATACommand( unsigned int index );
+extern void UpdateATACommandHistory( void );
 
 extern int reg_config( void );
 
@@ -812,6 +814,9 @@ extern unsigned char * trc_cht_dump2( void );
 extern void trc_llt_dump0( void );
 extern void trc_llt_dump1( void );
 extern unsigned char * trc_llt_dump2( void );
+
+extern void trc_ClearTrace( void );
+extern void trc_ShowAll( void );
 
 //********************************************************************
 //

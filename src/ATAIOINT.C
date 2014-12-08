@@ -181,18 +181,19 @@ int int_enable_irq( int shared, int irqNum,
    // convert IRQ number to INT number
    // and
    // enable the interrupt in the PIC
+   // See: http://wiki.osdev.org/8259_PIC
 
    if ( irqNum < 8 )
    {
-      int_int_vector = irqNum + 8;
+      int_int_vector = irqNum + 8;              // 8 is the vector offset for master PIC
       // In PIC0 change the IRQ 0-7 enable bit to 0
       _OUTP( PIC0_MASK, ( _INP( PIC0_MASK )
                          & pic_enable_irq[ irqNum ] ) );
    }
    else
    {
-      int_int_vector = 0x70 + ( irqNum - 8 );
-      // In PIC0 change the PIC1 enable bit to 0 (enable IRQ 2)
+      int_int_vector = 0x70 + ( irqNum - 8 );   // 70h is vector offset for slave PIC (its IRQs are 0-7)
+      // In PIC0 change the PIC1 enable bit to 0 (enable IRQ 2) so the interrupt can cascade down
       // In PIC1 change the IRQ enable bit to 0
       _OUTP( PIC0_MASK, ( _INP( PIC0_MASK ) & PIC0_ENABLE_PIC1 ) );
       _OUTP( PIC1_MASK, ( _INP( PIC1_MASK )
