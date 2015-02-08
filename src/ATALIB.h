@@ -47,6 +47,7 @@
 
 #define IGNORE_VALUE                            ( 0 )
 #define INVALID_VALUE                           ( 0 )
+#define SCAN_FOR_DEVICES                        ( -1 )
 
 #define SECURITY_USUPPORTED                     ( 0x00 )
 #define SECURITY_SUPPORTED                      ( 0x01 )
@@ -108,6 +109,21 @@ enum DeviceLocations_t
 };
 
 //----------------------------[GLOBAL STRUCTURES]-------------------------------
+
+struct StorageDevice_t {
+   unsigned int valid;
+   unsigned int busNum;
+   unsigned int devNum;
+   unsigned int funNum;
+   unsigned int cmdBase;
+   unsigned int ctrlBase;
+   unsigned int bmideBase;
+   unsigned int irqNum;
+   unsigned int devPos;
+   unsigned int masterSlave;
+   unsigned int regInfo0;
+   unsigned int regInfo1;
+};
 
 #pragma pack( push, 1 ) 
 typedef struct tSMARTData {
@@ -200,21 +216,23 @@ extern void CheckStatusAndErrorRegisters( unsigned char expectedStatus, char exp
 extern void DeviceConfigurationIdentify( void );
 extern void DeviceConfigurationRestore( void );
 extern void DisableInterrupt( void );
-extern int DisplayConnectedATAStorageDevices( void );
+extern void DiscoverActiveDevice( unsigned int deviceIndex );
+extern int DisplayConnectedATAStorageDevices( int numDevices );
 extern int EnableInterrupt( void );
 extern int EnableISADMA( void );
 extern int EnablePCIDMA( void );
 extern void HandleError( int kErrorFlag );
 extern void IdentifyDevice( void );
+extern struct StorageDevice_t* GetDeviceInfo( unsigned int deviceIndex );
 extern int GetDriveSecurityState( void );
 extern void GetEstimatedSecureEraseTimesInMin( void );
-extern void GetFirmwareRevision( char* const pFirmwareRevision, unsigned int buffSizeInBytes );
+extern void GetFirmwareRevision( void* pIDData, char* const pFirmwareRevision, unsigned int buffSizeInBytes );
 extern int GetIDWord( char* pIDBuffer, unsigned int byteOffset );
 extern void GetMaxLBAFromDCO( void );
 extern void GetMaxLBAFromIdentifyDevice( void );
 extern void GetMaxLBAFromReadNativeMax( void );
-extern void GetModelString( char* const pModelNum, unsigned int buffSizeInBytes );
-extern void GetSerialNumber( char* const pSerialNum, unsigned int buffSizeInBytes );
+extern void GetModelString( void* pIDData, char* const pModelNum, unsigned int buffSizeInBytes );
+extern void GetSerialNumber( void* pIDData, char* const pSerialNum, unsigned int buffSizeInBytes );
 extern int GetSmartAttributes( void );
 extern void PrintBuffer( void* pBuffer, int numberOfBytes, int printType );
 extern void PrintDataBufferHex( int numberOfBytes, int printType );
@@ -240,6 +258,7 @@ extern void SecureErase( const char* wcPasswordString, int kPasswordType, int kE
 extern void SecuritySetPassword( const char* wcPasswordString, int kPasswordType, int kSecurityLevel );
 extern void SecurityUnlockPassword( const char* wcPasswordString, int kPasswordType );
 extern void SecurityDisablePassword( const char* wcPasswordString, int kPasswordType );
+extern int SelectConnectedATAStorageDevices( void );
 extern void SendATACommand( long int* pAtaRegs );
 extern int SendNonDataCommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned int cylinder, unsigned int head, unsigned int secNum );
 extern int SendLBA28DataInCommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lba );

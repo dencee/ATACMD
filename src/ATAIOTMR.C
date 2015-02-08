@@ -37,20 +37,20 @@
 
 //**************************************************************
 
-long tmr_time_out = 20L;      // max command execution time in seconds
+static long tmr_time_out = 20L;  // max command execution time in seconds
 
-long tmr_cmd_start_time;      // command start time - see the
-                              // tmr_set_timeout() and
-                              // tmr_chk_timeout() functions.
-
-long tmr_1s_count;            // number of I/O port reads required
-                              //    for a 1s delay
-long tmr_1ms_count;           // number of I/O port reads required
-                              //    for a 1ms delay
-long tmr_1us_count;           // number of I/O port reads required
-                              //    for a 1us delay
-long tmr_500ns_count;         // number of I/O port reads required
-                              //    for a 500ns delay
+long tmr_cmd_start_time;         // command start time - see the
+                                 // tmr_set_timeout() and
+                                 // tmr_chk_timeout() functions.
+                                 
+long tmr_1s_count;               // number of I/O port reads required
+                                 //    for a 1s delay
+long tmr_1ms_count;              // number of I/O port reads required
+                                 //    for a 1ms delay
+long tmr_1us_count;              // number of I/O port reads required
+                                 //    for a 1us delay
+long tmr_500ns_count;            // number of I/O port reads required
+                                 //    for a 500ns delay
 
 //**************************************************************
 //

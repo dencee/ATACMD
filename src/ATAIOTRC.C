@@ -1275,28 +1275,28 @@ void trc_ClearTrace()
    trc_llt_dump0();     // zero the low level trace
 }
 
-static void pause()
+static void Pause()
 {
    int ch;
-   
+
    // Clear any queued up keys
    while ( kbhit() ) {
       ch = getch();
-      
+
       if ( ( ch == 0 ) || ( ch == 224 ) )
          getch();
    }
-   
+
    // Pause until key hit
    printf( "Press any key to continue...\n" );
-   
+
    // Wait for a key to be pressed
-   while ( !kbhit() )
-   
+   while ( !kbhit() ) {}
+
    // Clear any queued up keys
    while ( kbhit() ) {
       ch = getch();
-      
+
       if ( ( ch == 0 ) || ( ch == 224 ) )
          getch();
    }
@@ -1315,7 +1315,7 @@ void trc_ShowAll()
          break;
       printf( "* %s\n", cp );
    }
-   pause();
+   Pause();
 
    // display the command history
    trc_cht_dump1();           // start
@@ -1327,7 +1327,7 @@ void trc_ShowAll()
       printf( "* %s\n", cp );
       lc ++ ;
       if ( ! ( lc & 0x000f ) )
-         pause();
+         Pause();
    }
 
    // display the low level trace
@@ -1340,11 +1340,11 @@ void trc_ShowAll()
       printf( "* %s\n", cp );
       lc ++ ;
       if ( ! ( lc & 0x000f ) )
-         pause();
+         Pause();
    }
 
    if ( lc & 0x000f )
-      pause();
+      Pause();
 }
 
 // end ataiotrc.c

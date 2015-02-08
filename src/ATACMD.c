@@ -131,6 +131,10 @@ int TraceDisplay( const char* pCommand );
 int TraceClear( const char* pCommand );
 int SmartAttributes( const char* pCommand );
 
+int CheckCommand( const char* pCommand );
+int EnablePolling( const char* pCommand );
+int DisablePolling( const char* pCommand );
+
 // -----------------------------------------------------------------------------
 // Structs
 // -----------------------------------------------------------------------------
@@ -145,7 +149,7 @@ struct tEachCommand
 // Global Variables
 // -----------------------------------------------------------------------------
 
-char wcCommand[ NUMBER_OF_CHARACTERS_IN_DOS_LINE ] = { 0 };
+static char wcCommand[ NUMBER_OF_CHARACTERS_IN_DOS_LINE ] = { 0 };
 
 // ****************************************************************
 //  Add new macro commands to wtAtacmdCommands command array here!
@@ -178,8 +182,12 @@ struct tEachCommand wtAtacmdCommands[] = {
    [24].pName = "erase",   [24].pFunctionPtr = &SecurityErase,
    [25].pName = "smart",   [25].pFunctionPtr = &SmartAttributes,
    [26].pName = "fillbuf", [26].pFunctionPtr = &FillBuffer,
-//   [27].pName = "", [27].pFunctionPtr = &,
-//   [28].pName = "", [28].pFunctionPtr = &,
+   [27].pName = "chkcmd",  [27].pFunctionPtr = &CheckCommand,
+   [28].pName = "pollen",  [28].pFunctionPtr = &EnablePolling,
+   [29].pName = "polldis", [29].pFunctionPtr = &DisablePolling,
+//   [30].pName = "", [30].pFunctionPtr = &,
+//   [31].pName = "", [31].pFunctionPtr = &,
+//   [32].pName = "", [32].pFunctionPtr = &,
 };
 
 // -----------------------------------------------------------------------------
@@ -197,7 +205,7 @@ void InitializeParams()
    ukQuietMode = ON;      // Don't print ATALIB messages
    ukPrintOutput = PRINT_SCREEN;
    ATALIB_Initialize();
-   Display_Initialize();
+   DISPLAY_Initialize();
 }
 
 //------------------------------------------------------------------------------
@@ -259,7 +267,7 @@ int GetAndSendATACommand()
 
    memset( ataRegs, 0, sizeof( ataRegs ) );
 
-   commandReceived = GetATACommandParameters( ataRegs );
+   commandReceived = DISPLAY_GetATACommandParameters( ataRegs );
 
    if ( commandReceived == NO_ERROR ) {
       SendATACommand( ataRegs );
@@ -289,6 +297,31 @@ int TraceDisplay( const char* pCommand )
 int TraceClear( const char* pCommand )
 {
    trc_ClearTrace();
+   return ( NO_ERROR );
+}
+
+int EnablePolling( const char* pCommand )
+{
+   ATAIOREG_EnablePollForPIOCompletion();
+   
+   return ( NO_ERROR );
+}
+
+int DisablePolling( const char* pCommand )
+{
+   ATAIOREG_DisablePollForPIOCompletion();
+   
+   return ( NO_ERROR );
+}
+
+int CheckCommand( const char* pCommand )
+{
+   int commandSuccess;
+   
+   // Check and populate I/O registers
+   commandSuccess = ATAIOREG_CheckForCommandInProgress();
+   printf( "Command complete: %d\n", commandSuccess );
+   
    return ( NO_ERROR );
 }
 
@@ -339,25 +372,26 @@ int PrintDUTInfo( const char* pCommand )
    GetMaxLBAFromDCO(); gMaxLBADCO = ugReturnValue1;
 
    // Put arrays on own level to not consume lots of stack space
+   IdentifyDevice();
    {
       char wcModelString[45]; // words 27-46, so size must be >= 41 bytes
-      GetModelString( wcModelString, sizeof( wcModelString ) );
+      GetModelString( upBufferPtr, wcModelString, sizeof( wcModelString ) );
       printf( "Model # .....: %s\n", wcModelString );
    }
    {
       char wcSerialNumber[25]; // words 10-19, so size must be >= 21 bytes
-      GetSerialNumber( wcSerialNumber, sizeof( wcSerialNumber ) );
+      GetSerialNumber( upBufferPtr, wcSerialNumber, sizeof( wcSerialNumber ) );
       printf( "Serial # ....: %s\n", wcSerialNumber );
    }
    {
       char wcFirmwareRevision[10]; // words 23-26, so size must be >= 9 bytes
-      GetFirmwareRevision( wcFirmwareRevision, sizeof( wcFirmwareRevision ) );
+      GetFirmwareRevision( upBufferPtr, wcFirmwareRevision, sizeof( wcFirmwareRevision ) );
       printf( "Firmware Rev : %s\n", wcFirmwareRevision );
    }
    printf( "-----------------------------------\n" );
-   printf( "Max ID LBA ..: %08lX (%ld)\n", gMaxLBAID, gMaxLBAID );
-   printf( "Max HPA LBA .: %08lX (%ld)\n", gMaxLBAHPA, gMaxLBAHPA );
-   printf( "Max DCO LBA .: %08lX (%ld)\n", gMaxLBADCO, gMaxLBADCO );
+   printf( "Max ID LBA ..: %08lX (%ld) %ld MB\n", gMaxLBAID, gMaxLBAID, ( ( gMaxLBAID * 512 ) / 1000000 ) );
+   printf( "Max HPA LBA .: %08lX (%ld) %ld MB\n", gMaxLBAHPA, gMaxLBAHPA, ( ( gMaxLBAHPA * 512 ) / 1000000 ) );
+   printf( "Max DCO LBA .: %08lX (%ld) %ld MB\n", gMaxLBADCO, gMaxLBADCO, ( ( gMaxLBADCO * 512 ) / 1000000 ) );
    printf( "--------------------------------------------------------------------\n" );
    kSecurityWord = GetDriveSecurityState();
    printf( "Security W128: %04Xh, ", kSecurityWord );
@@ -408,7 +442,7 @@ int ScanDrives( const char* pCommand )
 
    system( "cls" );
 
-   exitProgram = DisplayConnectedATAStorageDevices() ;
+   exitProgram = SelectConnectedATAStorageDevices();
 
    if ( exitProgram == FALSE )
    {
@@ -430,18 +464,18 @@ int ATACommand( const char* pCommand )
 {
    int commandSuccess = NO_ERROR;
 
-   SaveScreen();
+   DISPLAY_SaveScreen();
 
    // Keep accepting commands until ESC key pressed
    while ( commandSuccess == NO_ERROR )
    {
-      DisplayATACommandHistory();
+      DISPLAY_ATACommandHistory();
       commandSuccess = GetAndSendATACommand();
-      DisplayATACommandHistory();
-      DisplayATARegs();
+      DISPLAY_ATACommandHistory();
+      DISPLAY_ATARegs();
    }
 
-   RestoreScreen();
+   DISPLAY_RestoreScreen();
 
    return ( commandSuccess );
 }
@@ -487,7 +521,7 @@ int ViewBuffer( const char* pCommand )
       numSect = 1;
    }
    
-   DisplayBuffer( buffer, numSect, PRINT_WORD );
+   DISPLAY_Buffer( buffer, numSect, PRINT_WORD );
    
    return ( NO_ERROR );
 }
@@ -500,14 +534,14 @@ int ViewBuffer( const char* pCommand )
 //------------------------------------------------------------------------------
 int DisplayATAInfo( const char* pCommand )
 {
-   SaveScreen();
-   DisplayATARegs();
-   DisplayATACommandHistory();
+   DISPLAY_SaveScreen();
+   DISPLAY_ATARegs();
+   DISPLAY_ATACommandHistory();
 
    // Wait untill ESC key is pressed
    while ( getch() != KEYBOARD_ESC ) { }
 
-   RestoreScreen();
+   DISPLAY_RestoreScreen();
 
    return ( NO_ERROR );
 }
@@ -602,7 +636,7 @@ int SecurityUnlock( const char* pCommand )
 int SecurityDisable( const char* pCommand )
 {
    int commandSuccess;
-   const char* pPassword = ( pCommand + strlen( "disable" ) + 1 );
+   const char* pPassword = ( pCommand + strlen( "pwdis" ) + 1 );
 
    if ( ( pPassword == NULL ) || ( strlen( pPassword ) == 0 ) ) {
       printf( "ERROR: password is invalid or NULL" );
@@ -664,14 +698,14 @@ int SecurityErase( const char* pCommand )
       
       printf( "\nProceed with erase? (Y/N)" );
       scanf( "%c", &inChar );
-      DumpLine( stdin );
+      TOOLS_DumpLine( stdin );
       
       if ( ( inChar == 'Y' ) || ( inChar == 'y' ) ) {
          char* pTimeStr;
          
-         GetTime( &pTimeStr );
+         TOOLS_GetTime( &pTimeStr );
          tmr_set_command_timeout( newTimeoutInSeconds );
-         InstallClock();
+         DISPLAY_InstallClock();
          
          printf( "Executing security erase at %s...", pTimeStr );
          fflush( stdout );
@@ -679,11 +713,11 @@ int SecurityErase( const char* pCommand )
          PrintSuccess( returnStatus );
          
          if ( returnStatus == NO_ERROR ) {
-            GetTime( &pTimeStr );
+            TOOLS_GetTime( &pTimeStr );
             printf( " at %s", pTimeStr );  
          }
          
-         UninstallClock();
+         DISPLAY_UninstallClock();
          tmr_set_command_timeout( originalTimeout );
       }
    }
@@ -960,17 +994,16 @@ int DoCommand( const char* pCommand )
    int eachAtacmdCommand, numAtacmdCommands;
 
    if ( pCommand == NULL ) { printf( "NULL command pointer!" ); exitProgram = TRUE; }
-   if ( !StringCompareIgnoreCase( pCommand, "ex", strlen( "ex" ) ) ) { exitProgram = TRUE; }
+   if ( !TOOLS_StringCompareIgnoreCase( pCommand, "ex", strlen( "ex" ) ) ) { exitProgram = TRUE; }
 
    if ( exitProgram == FALSE ) {
-//      printf( "\n" );
 
       numAtacmdCommands = ( sizeof( wtAtacmdCommands ) / sizeof( struct tEachCommand ) );
 
       // Search through all the user-defined ATA command macros
       for ( eachAtacmdCommand = 0; eachAtacmdCommand < numAtacmdCommands; eachAtacmdCommand++ )
       {
-         if ( !StringCompareIgnoreCase( pCommand, wtAtacmdCommands[ eachAtacmdCommand ].pName, strlen( wtAtacmdCommands[ eachAtacmdCommand ].pName ) ) ) {
+         if ( !TOOLS_StringCompareIgnoreCase( pCommand, wtAtacmdCommands[ eachAtacmdCommand ].pName, strlen( wtAtacmdCommands[ eachAtacmdCommand ].pName ) ) ) {
             commandFound = TRUE;
             
             commandSuccess = (* wtAtacmdCommands[ eachAtacmdCommand ].pFunctionPtr)( pCommand );

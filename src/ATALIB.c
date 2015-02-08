@@ -77,18 +77,6 @@
 
 //----------------------------------[STRUCTS]-----------------------------------
 
-struct StorageDevice_t {
-   unsigned int valid;
-   unsigned int busNum;
-   unsigned int devNum;
-   unsigned int funNum;
-   unsigned int cmdBase;
-   unsigned int ctrlBase;
-   unsigned int bmideBase;
-   unsigned int irqNum;
-   unsigned int devPos;
-   unsigned int masterSlave;
-};
 
 //------------------------------[GLOBAL VARIABLES]------------------------------
 
@@ -123,7 +111,7 @@ char wcPasswordString[33];
 char wcDisclaimerReply[5];
 char wcUserReply[5];
 
-struct StorageDevice_t wtStorageDevices[ MAX_STORAGE_DEVICES ];
+static struct StorageDevice_t wtStorageDevices[ MAX_STORAGE_DEVICES ];
 
 // Pointers
 FILE* upLog;
@@ -200,7 +188,7 @@ int SendLBA48DataInCommand( int cmd, unsigned int feat, unsigned int secCnt, uns
 // Output: NO_ERROR = successful; ERROR = unsuccessful
 //------------------------------------------------------------------------------
 int SendLBA28DataOutCommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lba )
-{  
+{
    return ( reg_pio_data_out_lba28( ukDevicePosition, cmd, feat, secCnt, lba, FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ), secCnt, ukMulti ) );
 }
 
@@ -234,29 +222,29 @@ int SendLBA48DataOutCommand( int cmd, unsigned int feat, unsigned int secCnt, un
 int SendLBA48DMACommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lbaLow, unsigned long lbaHigh )
 {
    int returnStatus;
-   
+
    if ( ( pio_bmide_base_addr == INVALID_VALUE ) && ( ( pio_base_addr1 == LEGACY_PRIMARY_BASEPORT ) || ( pio_base_addr1 == LEGACY_SECONDARY_BASEPORT ) ) ) {
       returnStatus = EnableISADMA();
-      
+
       if ( returnStatus == NO_ERROR ) {
          dma_isa_lba48( ukDevicePosition, cmd, feat, secCnt, lbaHigh, lbaLow, FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ), secCnt );
       }
    } else {
       returnStatus = EnableInterrupt();
-      
+
       if ( returnStatus == NO_ERROR ) {
          returnStatus = EnablePCIDMA();
       }
-      
+
       if ( returnStatus == NO_ERROR ) {
          dma_pci_lba48( ukDevicePosition, cmd, feat, secCnt, lbaHigh, lbaLow, FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ), secCnt );
-      
+
          if ( ( pio_base_addr1 == LEGACY_PRIMARY_BASEPORT ) || ( pio_base_addr1 == LEGACY_SECONDARY_BASEPORT ) ) {
             DisableInterrupt();
-         }      
+         }
       }
    }
-   
+
    return ( returnStatus );
 }
 
@@ -273,29 +261,29 @@ int SendLBA48DMACommand( int cmd, unsigned int feat, unsigned int secCnt, unsign
 int SendLBA28DMACommand( int cmd, unsigned int feat, unsigned int secCnt, unsigned long lba )
 {
    int returnStatus;
-   
+
    if ( ( pio_bmide_base_addr == INVALID_VALUE ) && ( ( pio_base_addr1 == LEGACY_PRIMARY_BASEPORT ) || ( pio_base_addr1 == LEGACY_SECONDARY_BASEPORT ) ) ) {
       returnStatus = EnableISADMA();
-      
+
       if ( returnStatus == NO_ERROR ) {
          dma_isa_lba28( ukDevicePosition, cmd, feat, secCnt, lba, FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ), secCnt );
       }
    } else {
       returnStatus = EnableInterrupt();
-      
+
       if ( returnStatus == NO_ERROR ) {
          returnStatus = EnablePCIDMA();
       }
-      
+
       if ( returnStatus == NO_ERROR ) {
          dma_pci_lba28( ukDevicePosition, cmd, feat, secCnt, lba, FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ), secCnt );
-      
+
          if ( ( pio_base_addr1 == LEGACY_PRIMARY_BASEPORT ) || ( pio_base_addr1 == LEGACY_SECONDARY_BASEPORT ) ) {
             DisableInterrupt();
-         }      
+         }
       }
    }
-   
+
    return ( returnStatus );
 }
 
@@ -409,14 +397,15 @@ void ATALIB_CleanUp()
 //------------------------------------------------------------------------------
 // Description: Get the Serial Number from Identify Device words 10-19.
 //
-// Input:  pSerialNum         - Pointer to serial number string
+// Input:  pIDData            - GET_ID_DATA to issue ID and store in 'buffer'
+//         pSerialNum         - Pointer to serial number string
 //         buffSizeInBytes    - Size of buffer pointed to by pFirmwareRevision
 //                              Here in order to make sure there's enough space
 //                              in the memory location pointed to
 //
 // Output: None
 //------------------------------------------------------------------------------
-void GetSerialNumber( char* const pSerialNum, unsigned int buffSizeInBytes )
+void GetSerialNumber( void* pIDData, char* const pSerialNum, unsigned int buffSizeInBytes )
 {
    int kSerialCounter, kIndex, firstChar;
    char ch;
@@ -433,7 +422,9 @@ void GetSerialNumber( char* const pSerialNum, unsigned int buffSizeInBytes )
    kIndex = 0;
 
    // Issue Identify Device command to fill buffer with ID data
-   IdentifyDevice();
+   if ( pIDData == GET_ID_DATA ) {
+      IdentifyDevice();
+   }
 
    firstChar = FALSE;
 
@@ -462,7 +453,7 @@ void GetSerialNumber( char* const pSerialNum, unsigned int buffSizeInBytes )
    }
 
    // Remove whitespace
-   RemoveTrailingSpaces( pSerialNum );
+   TOOLS_RemoveTrailingSpaces( pSerialNum );
 
    return;
 } // End GetSerialNumber
@@ -480,7 +471,7 @@ void PrintSerialNumber()
    char wcSerialNumber[25]; // words 10-19, so size must be >= 21 bytes
 
    // Populate with serial number
-   GetSerialNumber( wcSerialNumber, sizeof( wcSerialNumber ) );
+   GetSerialNumber( GET_ID_DATA, wcSerialNumber, sizeof( wcSerialNumber ) );
 
    // Copy string to global string and print
    sprintf( upPrintString, "%s", wcSerialNumber );
@@ -492,14 +483,15 @@ void PrintSerialNumber()
 //------------------------------------------------------------------------------
 // Description: Get the Firmware Revision from Identify Device words 23-26.
 //
-// Input:  pFirmwareRevision  - Pointer to firmware revision string
+// Input:  pIDData            - GET_ID_DATA to issue ID and store in 'buffer'
+//         pFirmwareRevision  - Pointer to firmware revision string
 //         buffSizeInBytes    - Size of buffer pointed to by pFirmwareRevision
 //                              Here in order to make sure there's enough space
 //                              in the memory location pointed to
 //
 // Output: None
 //------------------------------------------------------------------------------
-void GetFirmwareRevision( char* const pFirmwareRevision, unsigned int buffSizeInBytes )
+void GetFirmwareRevision( void* pIDData, char* const pFirmwareRevision, unsigned int buffSizeInBytes )
 {
    int kFirmwareCounter, kIndex, firstChar;
    char ch;
@@ -516,7 +508,9 @@ void GetFirmwareRevision( char* const pFirmwareRevision, unsigned int buffSizeIn
    kIndex = 0;
 
    // Issue Identify Device command to fill buffer with ID data
-   IdentifyDevice();
+   if ( pIDData == GET_ID_DATA ) {
+      IdentifyDevice();
+   }
 
    firstChar = FALSE;
 
@@ -543,7 +537,7 @@ void GetFirmwareRevision( char* const pFirmwareRevision, unsigned int buffSizeIn
    }
 
    // Remove whitespace
-   RemoveTrailingSpaces( pFirmwareRevision );
+   TOOLS_RemoveTrailingSpaces( pFirmwareRevision );
 
    return;
 } // End GetFirmwareRevision
@@ -561,7 +555,7 @@ void PrintFirmwareRevision()
    char wcFirmwareRevision[10]; // words 23-26, so size must be >= 9 bytes
 
    // Populate with firmware revision string
-   GetFirmwareRevision( wcFirmwareRevision, sizeof( wcFirmwareRevision ) );
+   GetFirmwareRevision( GET_ID_DATA, wcFirmwareRevision, sizeof( wcFirmwareRevision ) );
 
    // Copy string to global string and print
    sprintf( upPrintString, "%s", wcFirmwareRevision );
@@ -573,14 +567,15 @@ void PrintFirmwareRevision()
 //------------------------------------------------------------------------------
 // Description: Get the model string from Identify Device words 27-46.
 //
-// Input:  pModelNum          - Pointer to model string
+// Input:  pIDData            - GET_ID_DATA to issue ID and store in 'buffer'
+//         pModelNum          - Pointer to model string
 //         buffSizeInBytes    - Size of buffer pointed to by pFirmwareRevision
 //                              Here in order to make sure there's enough space
 //                              in the memory location pointed to
 //
 // Output: None
 //------------------------------------------------------------------------------
-void GetModelString( char* const pModelNum, unsigned int buffSizeInBytes )
+void GetModelString( void* pIDData, char* const pModelNum, unsigned int buffSizeInBytes )
 {
    int kModelCounter, kIndex, firstChar;
    char ch;
@@ -597,7 +592,9 @@ void GetModelString( char* const pModelNum, unsigned int buffSizeInBytes )
    kIndex = 0;
 
    // Issue Identify Device command to fill buffer with ID data
-   IdentifyDevice();
+   if ( pIDData == GET_ID_DATA ) {
+      IdentifyDevice();
+   }
 
    firstChar = FALSE;
 
@@ -624,7 +621,7 @@ void GetModelString( char* const pModelNum, unsigned int buffSizeInBytes )
    }
 
    // Remove whitespace
-   RemoveTrailingSpaces( pModelNum );
+   TOOLS_RemoveTrailingSpaces( pModelNum );
 
    return;
 } // End GetModelString
@@ -642,7 +639,7 @@ void PrintModelString()
    char wcModelString[45]; // words 27-46, so size must be >= 41 bytes
 
    // Populate with model number
-   GetModelString( wcModelString, sizeof( wcModelString ) );
+   GetModelString( GET_ID_DATA, wcModelString, sizeof( wcModelString ) );
 
    // Copy string to global string and print
    sprintf( upPrintString, "%s", wcModelString );
@@ -756,8 +753,8 @@ void CheckDCOSupported()
 //
 // Input:  None
 //
-// Output: ukReturnValue1 - OFF = Security NOT Supported
-//                          ON  = Security Supported
+// Output: ukReturnValue1 - OFF = Security NOT supported
+//                          ON  = Security supported
 //------------------------------------------------------------------------------
 void CheckSecuritySupported()
 {
@@ -1693,9 +1690,11 @@ void SecurityUnlockPassword (const char* wcPasswordString, int kPasswordType)
       1, 0
       );
 
+// TEMP ----DMC
    // Check if the drive is still locked
-   CheckSecurityLocked ();
-   kSecurityLockedFlag = ukReturnValue1;
+//   CheckSecurityLocked();
+//   kSecurityLockedFlag = ukReturnValue1;
+kSecurityLockedFlag = OFF;
 
    ukReturnValue1 = returnStatus;
    ukReturnValue2 = kSecurityLockedFlag;
@@ -1714,12 +1713,12 @@ void SecurityUnlockPassword (const char* wcPasswordString, int kPasswordType)
 //         ukReturnValue2 - OFF      = Drive security disabled
 //                          ON       = Drive security enabled
 //------------------------------------------------------------------------------
-void SecurityDisablePassword (const char* wcPasswordString, int kPasswordType)
+void SecurityDisablePassword( const char* wcPasswordString, int kPasswordType )
 {
    int kSecurityEnabledFlag, returnStatus;
 
    // Clear the buffer
-   memset (buffer, 0, sizeof (buffer));
+   memset( buffer, 0, sizeof( buffer ) );
 
    if ( kPasswordType == USER_PASSWORD ) {
       *buffer = USER_PASSWORD;      // Use user Password
@@ -1728,7 +1727,7 @@ void SecurityDisablePassword (const char* wcPasswordString, int kPasswordType)
    }
 
    // Copy the password to word 1 of the buffer
-   strcpy (buffer + 2, wcPasswordString);
+   strcpy( ( buffer + 2 ), wcPasswordString );
 
    if ( ukQuietMode == OFF ) {
       sprintf(upPrintString, "\n\nIssuing SECURITY DISABLE PASSWORD command");
@@ -1736,7 +1735,7 @@ void SecurityDisablePassword (const char* wcPasswordString, int kPasswordType)
    }
 
    // issue the security disable password command
-   returnStatus = reg_pio_data_out_lba28 (
+   returnStatus = reg_pio_data_out_lba28(
       ukDevicePosition, 0xf6,
       0, 0,
       0L,
@@ -1744,9 +1743,11 @@ void SecurityDisablePassword (const char* wcPasswordString, int kPasswordType)
       1, 0
       );
 
+// TEMP ----DMC
    // Check if the drive security is still enabled
-   CheckSecurityEnabled ();
-   kSecurityEnabledFlag = ukReturnValue1;
+//   CheckSecurityEnabled();
+//   kSecurityEnabledFlag = ukReturnValue1;
+kSecurityEnabledFlag = OFF;
 
    ukReturnValue1 = returnStatus;
    ukReturnValue2 = kSecurityEnabledFlag;
@@ -2088,7 +2089,7 @@ void WriteDMA( unsigned long lba, unsigned long numberOfSectors )
    int returnStatus;
    unsigned int featuresRegister, sectorCountRegister;
    unsigned int lbaHigh;
-   
+
    // Configure the registers for the write DMA command
    featuresRegister    = IGNORE_VALUE;
    sectorCountRegister = numberOfSectors;
@@ -2101,7 +2102,7 @@ void WriteDMA( unsigned long lba, unsigned long numberOfSectors )
 
    returnStatus = SendLBA48DMACommand( CMD_WRITE_DMA_EXT, featuresRegister, sectorCountRegister, lba, lbaHigh );
 
-   if ( returnStatus == ERROR ) {    
+   if ( returnStatus == ERROR ) {
       if ( ukQuietMode == OFF ) {
          sprintf( upPrintString, "\n\nIssuing WRITE DMA command" );
          PrintString( ukPrintOutput );
@@ -2306,7 +2307,7 @@ void ReadDMA( unsigned long lba, unsigned long numberOfSectors )
 
    returnStatus = SendLBA48DMACommand( CMD_READ_DMA_EXT, featuresRegister, sectorCountRegister, lba, lbaHigh );
 
-   if ( returnStatus == ERROR ) {    
+   if ( returnStatus == ERROR ) {
       if ( ukQuietMode == OFF ) {
          sprintf( upPrintString, "\n\nIssuing READ DMA command" );
          PrintString( ukPrintOutput );
@@ -2325,7 +2326,7 @@ void ReadDMA( unsigned long lba, unsigned long numberOfSectors )
 // Input:  None
 // Output: None
 //------------------------------------------------------------------------------
-void SoftwareReset ()
+void SoftwareReset()
 {
    int returnStatus;
 
@@ -2888,6 +2889,7 @@ void SendATACommand( long int* pAtaRegs )
          break;
       }
 
+      case CMD_SECURITY_ERASE_PREPARE:
       case CMD_CHECK_POWER_MODE1:
       case CMD_CHECK_POWER_MODE2:
       case CMD_DEVICE_RESET:
@@ -2935,27 +2937,28 @@ void SendATACommand( long int* pAtaRegs )
 
       case CMD_READ_DMA_EXT:
       case CMD_READ_DMA:
-      {      
+      {
          // -----------------------------------------------------------------
-         // PCI DMA read commands
+         // DMA (PCI or ISA) read commands
          // -----------------------------------------------------------------
 
          memset( buffer, 0, sizeof( buffer ) );
-         
+
          if ( cmd == CMD_READ_DMA_EXT ) {
             SendLBA48DMACommand( cmd, feat, secCnt, lbaLow, lbaHigh );
          } else {
             SendLBA28DMACommand( cmd, feat, secCnt, lbaLow );
          }
-      
+
          break;
       }
-      
+
       case CMD_WRITE_DMA:
       case CMD_WRITE_DMA_EXT:
+      case CMD_WRITE_DMA_FUA_EXT:
       {
          // -----------------------------------------------------------------
-         // PCI DMA write commands
+         // DMA (PCI or ISA) write commands
          // -----------------------------------------------------------------
 
          if ( cmd == CMD_WRITE_DMA_EXT ) {
@@ -2963,7 +2966,7 @@ void SendATACommand( long int* pAtaRegs )
          } else {
             SendLBA28DMACommand( cmd, feat, secCnt, lbaLow );
          }
-      
+
          break;
       }
 
@@ -2993,7 +2996,6 @@ void SendATACommand( long int* pAtaRegs )
          break;
       }
 
-      case CMD_WRITE_DMA_FUA_EXT:
       case CMD_WRITE_LOG_EXT:
       case CMD_WRITE_MULTIPLE_EXT:
       case CMD_WRITE_MULTIPLE_FUA_EXT:
@@ -3005,6 +3007,12 @@ void SendATACommand( long int* pAtaRegs )
 
          SendLBA48DataOutCommand( cmd, feat, secCnt, lbaLow, lbaHigh );
          break;
+      }
+
+      case CMD_SECURITY_ERASE_UNIT:
+      {
+         reg_pio_data_out_lba28( ukDevicePosition, cmd, feat, secCnt, secCnt,
+                                 FP_SEG( upBufferPtr ), FP_OFF( upBufferPtr ), 1, ukMulti );
       }
 
       default:
@@ -3046,10 +3054,10 @@ int EnableInterrupt()
    if ( ukQuietMode == OFF ) {
       if ( error == NO_ERROR ) {
          sprintf( upPrintString, "\n\nINT enabled [IRQ %d, BMIDE addr %Xh, IO addr %Xh]", uIRQNum, pio_bmide_base_addr, pio_base_addr1 );
-         PrintString( ukPrintOutput );            
+         PrintString( ukPrintOutput );
       } else {
          sprintf( upPrintString, "\n\nERROR: INT enable failed [IRQ %d, BMIDE addr %Xh, IO addr %Xh]", uIRQNum, pio_bmide_base_addr, pio_base_addr1 );
-         PrintString( ukPrintOutput );            
+         PrintString( ukPrintOutput );
       }
    }
 
@@ -3091,7 +3099,7 @@ int EnablePCIDMA()
    if ( ukQuietMode == OFF ) {
       if ( error == NO_ERROR ) {
          sprintf( upPrintString, "\n\nPCI DMA enabled" );
-         PrintString( ukPrintOutput );      
+         PrintString( ukPrintOutput );
       } else {
          sprintf( upPrintString, "\n\nERROR: Unable to enable PCI DMA" );
          PrintString( ukPrintOutput );
@@ -3119,21 +3127,21 @@ int EnablePCIDMA()
 int EnableISADMA()
 {
    int error = ERROR;
-   
+
    if ( ( pio_base_addr1 == LEGACY_PRIMARY_BASEPORT ) || ( pio_base_addr1 == LEGACY_SECONDARY_BASEPORT ) ) {
       error = dma_isa_config( 5 );
    }
-   
+
    if ( ukQuietMode == OFF ) {
       if ( error == NO_ERROR ) {
          sprintf( upPrintString, "\n\nISA DMA enabled" );
-         PrintString( ukPrintOutput );      
+         PrintString( ukPrintOutput );
       } else {
          sprintf( upPrintString, "\n\nERROR: Unable to enable ISA DMA" );
          PrintString( ukPrintOutput );
       }
    }
-   
+
    return ( error );
 }
 
@@ -3254,7 +3262,7 @@ unsigned int ScanForStorageDevices()
                      if ( cmdBase == LEGACY_PRIMARY_BASEPORT ) {
                         legacyChannelPriFound = TRUE;
                      }
-                     
+
                      if ( cmdBase == LEGACY_SECONDARY_BASEPORT ) {
                         legacyChannelSecFound = TRUE;
                      }
@@ -3269,6 +3277,8 @@ unsigned int ScanForStorageDevices()
                      wtStorageDevices[ currDeviceIdx ].irqNum = irqNum;
                      wtStorageDevices[ currDeviceIdx ].devPos = devPos;
                      wtStorageDevices[ currDeviceIdx ].masterSlave = ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) ? MASTER : SLAVE;
+                     wtStorageDevices[ currDeviceIdx ].regInfo0 = reg_config_info[0];
+                     wtStorageDevices[ currDeviceIdx ].regInfo1 = reg_config_info[1];                     
                      currDeviceIdx = ( ( currDeviceIdx + 1 ) % MAX_STORAGE_DEVICES );
                      totalDevicesFound++;
                   }
@@ -3287,16 +3297,16 @@ unsigned int ScanForStorageDevices()
       ctrlBase  = 0x3F0;
       bmideBase = IGNORE_VALUE;
       irqNum    = 14;
-      
+
       // Map ATA I/O regs to I/O ports
       pio_set_iobase_addr( cmdBase, ctrlBase, bmideBase );
-      
+
       // Scan for ATA devices
-      numATADev = reg_config();
-      
+      reg_config();
+
       if ( ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) || ( reg_config_info[1] == REG_CONFIG_TYPE_ATA ) ) {
          // Master or slave device found
-      
+
          wtStorageDevices[ currDeviceIdx ].valid = VALID_DEVICE_ENTRY;
          wtStorageDevices[ currDeviceIdx ].busNum = IGNORE_VALUE;
          wtStorageDevices[ currDeviceIdx ].devNum = IGNORE_VALUE;
@@ -3307,6 +3317,8 @@ unsigned int ScanForStorageDevices()
          wtStorageDevices[ currDeviceIdx ].irqNum = irqNum;
          wtStorageDevices[ currDeviceIdx ].devPos = PRIMARY_CHANNEL;
          wtStorageDevices[ currDeviceIdx ].masterSlave = ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) ? MASTER : SLAVE;
+         wtStorageDevices[ currDeviceIdx ].regInfo0 = reg_config_info[0];
+         wtStorageDevices[ currDeviceIdx ].regInfo1 = reg_config_info[1];         
          currDeviceIdx = ( ( currDeviceIdx + 1 ) % MAX_STORAGE_DEVICES );
          totalDevicesFound++;
       }
@@ -3321,16 +3333,16 @@ unsigned int ScanForStorageDevices()
       ctrlBase  = 0x370;
       bmideBase = IGNORE_VALUE;
       irqNum    = 15;
-      
+
       // Map ATA I/O regs to I/O ports
       pio_set_iobase_addr( cmdBase, ctrlBase, bmideBase );
-      
+
       // Scan for ATA devices
-      numATADev = reg_config();
-      
+      reg_config();
+
       if ( ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) || ( reg_config_info[1] == REG_CONFIG_TYPE_ATA ) ) {
          // Master or slave device found
-      
+
          wtStorageDevices[ currDeviceIdx ].valid = VALID_DEVICE_ENTRY;
          wtStorageDevices[ currDeviceIdx ].busNum = IGNORE_VALUE;
          wtStorageDevices[ currDeviceIdx ].devNum = IGNORE_VALUE;
@@ -3341,6 +3353,8 @@ unsigned int ScanForStorageDevices()
          wtStorageDevices[ currDeviceIdx ].irqNum = irqNum;
          wtStorageDevices[ currDeviceIdx ].devPos = SECONDARY_CHANNEL;
          wtStorageDevices[ currDeviceIdx ].masterSlave = ( reg_config_info[0] == REG_CONFIG_TYPE_ATA ) ? MASTER : SLAVE;
+         wtStorageDevices[ currDeviceIdx ].regInfo0 = reg_config_info[0];
+         wtStorageDevices[ currDeviceIdx ].regInfo1 = reg_config_info[1];
          currDeviceIdx = ( ( currDeviceIdx + 1 ) % MAX_STORAGE_DEVICES );
          totalDevicesFound++;
       }
@@ -3358,6 +3372,8 @@ unsigned int ScanForStorageDevices()
 // Description: Copies the base, controller, and bmide address of the device to
 //              the library's global variables so each command sent will be
 //              sent to those addresses.
+// Note:        Sends NO data to the device so user must make sure a device is
+//              attached.
 //
 // Input:  deviceIndex        - index into array of found devices. Use
 //                              ScanForStorageDevices() first to populate this
@@ -3369,15 +3385,13 @@ void SetActiveDevice( unsigned int deviceIndex )
 {
    unsigned int cmdBase, ctrlBase, bmideBase;
 
-   if ( deviceIndex >= MAX_STORAGE_DEVICES )
-   {
+   if ( deviceIndex >= MAX_STORAGE_DEVICES ) {
       sprintf( upPrintString, "\nERROR: Storage device index invalid!!!" );
       PrintString( ukPrintOutput );
       return;
    }
 
-   if ( wtStorageDevices[ deviceIndex ].valid != VALID_DEVICE_ENTRY )
-   {
+   if ( wtStorageDevices[ deviceIndex ].valid != VALID_DEVICE_ENTRY ) {
       sprintf( upPrintString, "\nERROR: No storage device on selected index!!!" );
       PrintString( ukPrintOutput );
       return;
@@ -3386,34 +3400,139 @@ void SetActiveDevice( unsigned int deviceIndex )
    cmdBase   = wtStorageDevices[ deviceIndex ].cmdBase;
    ctrlBase  = wtStorageDevices[ deviceIndex ].ctrlBase;
    bmideBase = wtStorageDevices[ deviceIndex ].bmideBase;
-
+   
+   // Initialize ATALIB device parameters
    ukDevicePosition = wtStorageDevices[ deviceIndex ].masterSlave;
    uIRQNum = wtStorageDevices[ deviceIndex ].irqNum;
    dma_pci_enabled_flag = 0;
-
+   
    // Restore interrupt handler if it was modified with previous device's IRQ number
    DisableInterrupt();
-
+   
    // Align the I/O ports to the driver's variables
    pio_set_iobase_addr( cmdBase, ctrlBase, bmideBase );
+   
+   // This info is needed by the driver
+   reg_config_info[ 0 ] = wtStorageDevices[ deviceIndex ].regInfo0;
+   reg_config_info[ 1 ] = wtStorageDevices[ deviceIndex ].regInfo1;
+   
+   uActiveDeviceIndex = deviceIndex;
 
-   // Let the driver know which devices are attached
+   return;
+} // End SetActiveDevice
+
+//------------------------------------------------------------------------------
+// Description: Copies the base, controller, and bmide address of the device to
+//              the library's global variables so each command sent will be
+//              sent to those addresses.
+//
+// Input:  deviceIndex        - index into array of found devices. Use
+//                              ScanForStorageDevices() first to populate this
+//                              array
+//
+// Output: None
+//------------------------------------------------------------------------------
+void DiscoverActiveDevice( unsigned int deviceIndex )
+{
+   // Set I/O addresses for selected device
+   SetActiveDevice( deviceIndex );
+
+   // Let the driver know which devices are attached. This issues
+   // commands to the device in order to validate it as an ATA device.
    reg_config();
 
    uActiveDeviceIndex = deviceIndex;
-   
+
    return;
-} // End SetActiveDevice
+} // DiscoverActiveDevice
+
+//------------------------------------------------------------------------------
+// Description: Gets a pointer to a found device's information.
+//
+// Input:  deviceIndex        - index into storage devices, wtStorageDevices
+//
+// Output: pDeviceInfo*       - pointer to device info
+//------------------------------------------------------------------------------
+struct StorageDevice_t* GetDeviceInfo( unsigned int deviceIndex )
+{
+   struct StorageDevice_t* pDeviceInfo = NULL;
+   
+   if ( deviceIndex < MAX_STORAGE_DEVICES ) {
+      pDeviceInfo = &wtStorageDevices[ deviceIndex ];
+   }
+   
+   return ( pDeviceInfo );
+}
 
 //------------------------------------------------------------------------------
 // Description: Displays all the found devices after ScanForStorageDevices()
 //              is called.
 //
-// Input:  None
+// Input:  numDevices      - number of devices found;
+//                           if SCAN_FOR_DEVICES scan for devices
 //
 // Output: None
 //------------------------------------------------------------------------------
-int DisplayConnectedATAStorageDevices()
+int DisplayConnectedATAStorageDevices( int numDevices )
+{
+   unsigned int eachDevice;
+
+   // Scan must be called somewhere else no devices will ever be found
+   if ( numDevices == SCAN_FOR_DEVICES ) {
+      numDevices = ScanForStorageDevices();
+   }
+
+   if ( numDevices == 0 ) {
+      printf( "No devices found!!!\n" );
+   } else {
+      printf( "Dev# | Base | bus/dev/fun | Model# [Serial#]\n" );
+      printf( "-----+------+-------------+----------------------------------\n" );
+      
+      for ( eachDevice = 0; eachDevice < numDevices; eachDevice++ )
+      {
+         if ( wtStorageDevices[eachDevice].valid == VALID_DEVICE_ENTRY )
+         {
+            char wcModelString[45];  // words 27-46, so size must be >= 41 bytes
+            char wcSerialNumber[25]; // words 10-19, so size must be >= 21 bytes
+      
+            // Setup device I/O ports for ID command
+            SetActiveDevice( eachDevice );
+      
+            // Print device model string
+            printf( "  %2d |", ( eachDevice + 1 ) );
+            printf( " %04Xh|", wtStorageDevices[eachDevice].cmdBase );
+      
+            if ( ( wtStorageDevices[eachDevice].busNum == IGNORE_VALUE ) && (  wtStorageDevices[eachDevice].devNum == IGNORE_VALUE ) && (  wtStorageDevices[eachDevice].funNum == IGNORE_VALUE ) )
+            {
+               printf( "   --/--/--  |" );
+            }
+            else
+            {
+               printf( "  %02Xh/%02Xh/%01dh |", wtStorageDevices[eachDevice].busNum, wtStorageDevices[eachDevice].devNum, wtStorageDevices[eachDevice].funNum );
+            }
+      
+            IdentifyDevice();
+            GetModelString( upBufferPtr, wcModelString, sizeof( wcModelString ) );
+            GetSerialNumber( upBufferPtr, wcSerialNumber, sizeof( wcSerialNumber ) );
+      
+            printf( " %s [%s]\n", wcModelString, wcSerialNumber );
+         }
+      }
+   }
+
+   return ( numDevices );
+}
+
+//------------------------------------------------------------------------------
+// Description: Displays all the found devices after ScanForStorageDevices()
+//              is called and waits until user selects a device.
+//
+// Input:  None
+//
+// Output: exitProgram     - TRUE  = user chose no devices
+//                           FALSE = user chose a device
+//------------------------------------------------------------------------------
+int SelectConnectedATAStorageDevices()
 {
    unsigned int eachDevice, numDevices;
    int selectedDev, exitProgram;
@@ -3431,45 +3550,14 @@ int DisplayConnectedATAStorageDevices()
 
    while ( 1 )
    {
-      printf( "Dev# | Base Addr | PCI bus/dev/fun | Model# [Serial#]\n" );
-      printf( "-----+-----------+-----------------+----------------------------------\n" );
-
-      for ( eachDevice = 0; eachDevice < numDevices; eachDevice++ )
-      {
-         if ( wtStorageDevices[eachDevice].valid == VALID_DEVICE_ENTRY )
-         {
-            char wcModelString[45];  // words 27-46, so size must be >= 41 bytes
-            char wcSerialNumber[25]; // words 10-19, so size must be >= 21 bytes
-
-            // Setup device I/O ports
-            SetActiveDevice( eachDevice );
-
-            // Print device model string
-            printf( "  %2d |", ( eachDevice + 1 ) );
-            printf( "     %04Xh |", wtStorageDevices[eachDevice].cmdBase );
-
-            if ( ( wtStorageDevices[eachDevice].busNum == IGNORE_VALUE ) && (  wtStorageDevices[eachDevice].devNum == IGNORE_VALUE ) && (  wtStorageDevices[eachDevice].funNum == IGNORE_VALUE ) )
-            {
-               printf( "     --/--/--    |" );
-            }
-            else
-            {
-               printf( "    %02Xh/%02Xh/%01dh   |", wtStorageDevices[eachDevice].busNum, wtStorageDevices[eachDevice].devNum, wtStorageDevices[eachDevice].funNum );
-            }
-
-            GetModelString( wcModelString, sizeof( wcModelString ) );
-            GetSerialNumber( wcSerialNumber, sizeof( wcSerialNumber ) );
-
-            printf( " %s [%s]\n", wcModelString, wcSerialNumber );
-         }
-      }
+      DisplayConnectedATAStorageDevices( numDevices );
 
       printf( " Enter 0 to exit the program\n\n" );
       printf( "Enter Dev # to select drive: " );
       fflush( stdout );
       scanf( "%d", &selectedDev );
 
-      DumpLine( stdin );
+      TOOLS_DumpLine( stdin );
 
       if ( ( selectedDev > 0 ) && ( selectedDev < ( numDevices + 1 ) ) )
       {
@@ -3497,7 +3585,7 @@ int DisplayConnectedATAStorageDevices()
    }
 
    return ( exitProgram );
-} // End DisplayConnectedATAStorageDevices
+} // End SelectConnectedATAStorageDevices
 
 //------------------------------------------------------------------------------
 // Description: Prints PCI info about active device.
@@ -3516,15 +3604,21 @@ void PrintPCIDeviceInfo()
    printf( "device position ....: %d\n", wtStorageDevices[ uActiveDeviceIndex ].devPos );
 }
 
+//------------------------------------------------------------------------------
+// Description: Reads the SMART data from a device.
+//
+// Input:  None
+// Output: ERROR/NO_ERROR
+//------------------------------------------------------------------------------
 int GetSmartAttributes()
 {
    int returnStatus;
-   
+
    if ( ukQuietMode == OFF ) {
       sprintf( upPrintString, "\n\nIssuing SMART READ DATA command" );
       PrintString( ukPrintOutput );
    }
-   
+
    // Clear the buffer so there's no remnant data in buffer before reading
    memset( buffer, 0, sizeof( buffer ) );
 

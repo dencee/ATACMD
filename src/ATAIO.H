@@ -579,7 +579,7 @@ struct REG_CMD_INFO
    unsigned long lbaHigh1;    // upper 32-bits of LBA before
    unsigned long lbaLow2;     // lower 32-bits of LBA after
    unsigned long lbaHigh2;    // upper 32-bits of LBA after
-} ;
+};
 
 extern struct REG_CMD_INFO reg_cmd_info;
 
@@ -633,9 +633,12 @@ extern int reg_incompat_flags;   // see #defines...
 
 // config and reset funcitons
 
-extern unsigned int GetLastATACommandIndex( void );
-extern struct ATACommandEntry_t* GetPreviousATACommand( unsigned int index );
-extern void UpdateATACommandHistory( void );
+extern void ATAIOREG_EnablePollForPIOCompletion( void );
+extern void ATAIOREG_DisablePollForPIOCompletion( void );
+extern int ATAIOREG_CheckForCommandInProgress( void );
+extern unsigned int ATAIOREG_GetLastATACommandIndex( void );
+extern struct ATACommandEntry_t* ATAIOREG_GetPreviousATACommand( unsigned int index );
+extern void ATAIOREG_UpdateATACommandHistory( void );
 
 extern int reg_config( void );
 

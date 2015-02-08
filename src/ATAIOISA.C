@@ -598,7 +598,7 @@ static int exec_isa_ata_cmd( int dev,
    // All done.  The return values of this function are described in
    // ATAIO.H.
 
-   UpdateATACommandHistory();
+   ATAIOREG_UpdateATACommandHistory();
 
    if ( reg_cmd_info.ec )
       return 1;

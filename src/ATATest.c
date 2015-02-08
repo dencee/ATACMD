@@ -72,9 +72,8 @@
 
 static unsigned char* wpDataTypeNames[] =
 {
-   //123456 (max 12 chars)
    "NONE",           // TRC_TYPE_NONE
-   "Dma In",          // TRC_TYPE_ADMAI
+   "Dma In",         // TRC_TYPE_ADMAI
    "DmaOut",         // TRC_TYPE_ADMAO
    "NON DA",         // TRC_TYPE_AND
    "PIO DI",         // TRC_TYPE_APDI
@@ -93,7 +92,7 @@ void InitializeParams()
    ukQuietMode = ON;      // Don't print ATALIB messages
    ukPrintOutput = PRINT_SCREEN;
    ATALIB_Initialize();
-   Display_Initialize();
+   DISPLAY_Initialize();
 }
 
 void ClearTrace()
@@ -101,27 +100,6 @@ void ClearTrace()
    // Clear the command history and low level traces
    trc_cht_dump0();     // zero the command history
    trc_llt_dump0();     // zero the low level trace
-}
-
-void pause()
-{
-
-   // clear any queued up keys
-   while ( kbhit() )
-   {
-      if ( getch() == 0 )
-         getch();
-   }
-   // pause until key hit
-   printf( "Press any key to continue...\n" );
-   while ( ! kbhit() )
-      /* do nothing */ ;
-   // clear any queued up keys
-   while ( kbhit() )
-   {
-      if ( getch() == 0 )
-         getch();
-   }
 }
 
 void ShowAll()
@@ -140,7 +118,7 @@ void ShowAll()
          break;
       printf( "* %s\n", cp );
    }
-   pause();
+   DISPLAY_Pause();
 
    // display the command history
    trc_cht_dump1();           // start
@@ -152,7 +130,7 @@ void ShowAll()
       printf( "* %s\n", cp );
       lc ++ ;
       if ( ! ( lc & 0x000f ) )
-         pause();
+         DISPLAY_Pause();
    }
 
    // display the low level trace
@@ -165,11 +143,11 @@ void ShowAll()
       printf( "* %s\n", cp );
       lc ++ ;
       if ( ! ( lc & 0x000f ) )
-         pause();
+         DISPLAY_Pause();
    }
 
    if ( lc & 0x000f )
-      pause();
+      DISPLAY_Pause();
 }
 
 void WriteCommandToFile( FILE* pReport )
@@ -206,7 +184,7 @@ int main()
 
    InitializeParams();
 
-   exitProgram = DisplayConnectedATAStorageDevices();
+   exitProgram = DisplayConnectedATAStorageDevices( SCAN_FOR_DEVICES );
 
    if ( exitProgram == TRUE )
    {
@@ -261,8 +239,8 @@ int main()
             ataRegs[ LBA_LOW ]  = 0x80;   // HV specific
             break;
 
-//         case CMD_READ_DMA:
-//         case CMD_READ_DMA_EXT:
+         case CMD_READ_DMA:
+         case CMD_READ_DMA_EXT:
          case CMD_READ_SECTORS:
          case CMD_READ_SECTORS_EXT:
          case CMD_READ_SECTORS_WITHOUT_RETRY:
@@ -303,9 +281,9 @@ int main()
             ataRegs[ LBA_LOW ]  = 0x80;   // HV specific
             break;
 
-//         case CMD_WRITE_DMA:
-//         case CMD_WRITE_DMA_EXT:
-//         case CMD_WRITE_DMA_FUA_EXT:
+         case CMD_WRITE_DMA:
+         case CMD_WRITE_DMA_EXT:
+         case CMD_WRITE_DMA_FUA_EXT:
          case CMD_WRITE_SECTORS:
          case CMD_WRITE_SECTORS_EXT:
          case CMD_WRITE_SECTORS_WITHOUT_RETRY:
@@ -319,9 +297,9 @@ int main()
 
          // Skipped commands (to do later)
          case 0x88: // vendor specific
-         case 0x89:
-         case 0x8A:
-         case 0x8B:
+         case 0x89: // vendor specific
+         case 0x8A: // vendor specific
+         case 0x8B: // vendor specific
          case CMD_WRITE_SAME:
          case CMD_IDENTIFY_DEVICE_DMA:
          case CMD_READ_FPDMA_QUEUED:
@@ -334,12 +312,7 @@ int main()
          case CMD_READ_STREAM_EXT:
          case CMD_WRITE_STREAM_DMA_EXT:
          case CMD_WRITE_STREAM_EXT:
-         case CMD_READ_DMA:
-         case CMD_READ_DMA_EXT:
          case CMD_READ_DMA_WITHOUT_RETRIES:
-         case CMD_WRITE_DMA:
-         case CMD_WRITE_DMA_EXT:
-         case CMD_WRITE_DMA_FUA_EXT:
          case CMD_WRITE_DMA_WITHOUT_RETRIES:
          case CMD_EXECUTE_DEVICE_DIAGNOSTIC:
          case CMD_SEEK:

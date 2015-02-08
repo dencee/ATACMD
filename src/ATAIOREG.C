@@ -67,13 +67,70 @@ long reg_slow_xfer_flag;
 
 int reg_incompat_flags;
 
+// Careful using this flag when communicating in interrupt mode. Switching
+// between devices can cause the interrupt used by the previous device to be
+// replaced by the new device.
+// TODO: place restrictions on this usage when interrupts are used -DMC
+static int uPollForCommandCompletion = 1;
+
 //*************************************************************
 //
-// GetLastATACommandIndex() -
+// ATAIOREG_EnablePollForPIOCompletion()
 //
 //*************************************************************
 
-unsigned int GetLastATACommandIndex()
+void ATAIOREG_EnablePollForPIOCompletion()
+{
+   uPollForCommandCompletion = 1;
+   return;
+}
+
+//*************************************************************
+//
+// ATAIOREG_DisablePollForPIOCompletion()
+//
+//*************************************************************
+
+void ATAIOREG_DisablePollForPIOCompletion()
+{
+   uPollForCommandCompletion = 0;
+   return;
+}
+
+//*************************************************************
+//
+// ATAIOREG_CheckForCommandInProgress()
+//
+//*************************************************************
+int ATAIOREG_CheckForCommandInProgress()
+{
+   // Get the output registers and populate struct
+   sub_trace_command();
+   
+   // mark end of PDO cmd in low level trace
+   trc_llt( 0, 0, TRC_LLT_E_PDO );   
+/*
+   // Don't think this is needed, think about removing- DMC
+   if ( sub_readBusMstrStatus() & BM_SR_MASK_ERR )
+   {
+      reg_cmd_info.ec = 78;                  // yes
+      trc_llt( 0, reg_cmd_info.ec, TRC_LLT_ERROR );
+   }
+*/
+   if ( ( reg_cmd_info.as2 & CB_STAT_BSY ) != 0 ) {
+      return ( 1 );
+   } else {
+      return ( 0 );
+   }
+}
+
+//*************************************************************
+//
+// ATAIOREG_GetLastATACommandIndex() -
+//
+//*************************************************************
+
+unsigned int ATAIOREG_GetLastATACommandIndex()
 {
    if ( uNumberOfATACommands == 0 ){
       return 0;                                                               // No commands yet
@@ -86,11 +143,11 @@ unsigned int GetLastATACommandIndex()
 
 //*************************************************************
 //
-// GetPreviousATACommand() -
+// ATAIOREG_GetPreviousATACommand() -
 //
 //*************************************************************
 
-struct ATACommandEntry_t* GetPreviousATACommand( unsigned int index )
+struct ATACommandEntry_t* ATAIOREG_GetPreviousATACommand( unsigned int index )
 {
    if ( index >= MAX_STORED_ATA_COMMANDS ) {
       return NULL;
@@ -101,10 +158,10 @@ struct ATACommandEntry_t* GetPreviousATACommand( unsigned int index )
 
 //*************************************************************
 //
-// UpdateATACommandHistory() -
+// ATAIOREG_UpdateATACommandHistory() -
 //
 //*************************************************************
-void UpdateATACommandHistory()
+void ATAIOREG_UpdateATACommandHistory()
 {
    unsigned int nextCmdIndex = ( uNumberOfATACommands % MAX_STORED_ATA_COMMANDS );
 
@@ -162,7 +219,7 @@ static void reg_wait_poll( int we, int pe )
    else
    {
       int cntr = 0;
-      
+
       trc_llt( 0, 0, TRC_LLT_PNBSY );
       while ( 1 )
       {
@@ -571,7 +628,7 @@ int reg_reset( int skipFlag, int devRtrn )
    // All done.  The return values of this function are described in
    // ATAIO.H.
 
-   UpdateATACommandHistory();
+   ATAIOREG_UpdateATACommandHistory();
 
    if ( reg_cmd_info.ec )
       return 1;
@@ -690,6 +747,7 @@ static int exec_non_data_cmd( int dev )
       trc_llt( 0, 0, TRC_LLT_PNBSY );
       while ( 1 )
       {
+         // NOTE: Command not used so don't care if command has its own polling routine -DMC
          pio_outbyte( CB_DH, CB_DH_DEV1 | dev75 );
          ATA_DELAY();
          secCnt = pio_inbyte( CB_SC );
@@ -719,60 +777,76 @@ static int exec_non_data_cmd( int dev )
       {
          // Wait for interrupt -or- wait for not BUSY -or- wait for time out.
 
-         if ( ! int_use_intr_flag )
-            polled = 1;
-         reg_wait_poll( 22, 23 );
+         if ( ( uPollForCommandCompletion != 0 ) || ( int_use_intr_flag != 0 ) ) {
+            if ( ! int_use_intr_flag ) {
+               polled = 1;
+            }
+            reg_wait_poll( 22, 23 );
+         }
+         // else user will check reg themselves for completion
       }
    }
 
-   // If status was polled or if any error read the status register,
-   // otherwise get the status that was read by the interrupt handler.
+   // --------------------------------------------------------------------------
+   // Only handle errors (output regs) if we waited for command completion above
+   // --------------------------------------------------------------------------
 
-   if ( ( polled ) || ( reg_cmd_info.ec ) )
-      status = pio_inbyte( CB_STAT );
-   else
-      status = int_ata_status;
+   if ( ( uPollForCommandCompletion == 0 ) && ( int_use_intr_flag == 0 ) && ( reg_cmd_info.cmd != CMD_DEVICE_RESET ) ) {
 
-   // Error if BUSY, DEVICE FAULT, DRQ or ERROR status now.
+      // Get the current output registers; BSY may still be set
+      sub_trace_command();
 
-   if ( reg_cmd_info.ec == 0 )
-   {
-      if ( status & ( CB_STAT_BSY | CB_STAT_DF | CB_STAT_DRQ | CB_STAT_ERR ) )
+   } else {
+      // If status was polled or if any error read the status register,
+      // otherwise get the status that was read by the interrupt handler.
+
+      if ( ( polled ) || ( reg_cmd_info.ec ) )
+         status = pio_inbyte( CB_STAT );
+      else
+         status = int_ata_status;
+
+      // Error if BUSY, DEVICE FAULT, DRQ or ERROR status now.
+
+      if ( reg_cmd_info.ec == 0 )
       {
-         reg_cmd_info.ec = 21;
+         if ( status & ( CB_STAT_BSY | CB_STAT_DF | CB_STAT_DRQ | CB_STAT_ERR ) )
+         {
+            reg_cmd_info.ec = 21;
+            trc_llt( 0, reg_cmd_info.ec, TRC_LLT_ERROR );
+         }
+      }
+
+      // read the output registers and trace the command.
+
+      sub_trace_command();
+
+      // BMIDE Error=1?
+
+      if ( sub_readBusMstrStatus() & BM_SR_MASK_ERR )
+      {
+         reg_cmd_info.ec = 78;                  // yes
          trc_llt( 0, reg_cmd_info.ec, TRC_LLT_ERROR );
       }
+
+      // NON_DATA_DONE:
+
+      // For interrupt mode, remove interrupt handler.
+
+      int_restore_int_vect();
+
+      // mark end of ND cmd in low level trace
+
+      trc_llt( 0, 0, TRC_LLT_E_ND );
+
+      // All done.  The return values of this function are described in
+      // ATAIO.H.
    }
 
-   // read the output registers and trace the command.
+   ATAIOREG_UpdateATACommandHistory();
 
-   sub_trace_command();
-
-   // BMIDE Error=1?
-
-   if ( sub_readBusMstrStatus() & BM_SR_MASK_ERR )
-   {
-      reg_cmd_info.ec = 78;                  // yes
-      trc_llt( 0, reg_cmd_info.ec, TRC_LLT_ERROR );
-   }
-
-   // NON_DATA_DONE:
-
-   // For interrupt mode, remove interrupt handler.
-
-   int_restore_int_vect();
-
-   // mark end of ND cmd in low level trace
-
-   trc_llt( 0, 0, TRC_LLT_E_ND );
-
-   // All done.  The return values of this function are described in
-   // ATAIO.H.
-
-   UpdateATACommandHistory();
-
-   if ( reg_cmd_info.ec )
+   if ( reg_cmd_info.ec ) {
       return 1;
+   }
    return 0;
 }
 
@@ -1141,7 +1215,7 @@ static int exec_pio_data_in_cmd( int dev,
    // All done.  The return values of this function are described in
    // ATAIO.H.
 
-   UpdateATACommandHistory();
+   ATAIOREG_UpdateATACommandHistory();
 
    if ( reg_cmd_info.ec )
       return 1;
@@ -1454,7 +1528,7 @@ static int exec_pio_data_out_cmd( int dev,
 
          // increment number of DRQ packets
 
-         reg_cmd_info.drqPackets ++ ;
+         reg_cmd_info.drqPackets++ ;
 
          // determine the number of sectors to transfer
 
@@ -1527,10 +1601,23 @@ static int exec_pio_data_out_cmd( int dev,
          break;   // go to WRITE_DONE
       }
 
-      // Wait for interrupt -or- wait for not BUSY -or- wait for time out.
+      // -----------------------------------------------------------------------
+      // If not polling for command completion, don't poll after the last sector
+      // is transferred
+      // -----------------------------------------------------------------------
 
-      ATAPI_DELAY( dev );
-      reg_wait_poll( 44, 45 );
+      if ( ( uPollForCommandCompletion != 0 ) || ( numSect >= 1 ) || ( int_use_intr_flag != 0 ) ) {
+         // Wait for interrupt -or- wait for not BUSY -or- wait for time out.
+
+         ATAPI_DELAY( dev );
+         reg_wait_poll( 44, 45 );
+      } else {
+
+         // Break out of write loop after the last sector is transferred.
+         // Let the user check for BSY not set and handle output registers when
+         // done.
+         break;
+      }
 
       // If polling or error read the status, otherwise
       // get the status that was read by the interrupt handler.
@@ -1570,39 +1657,44 @@ static int exec_pio_data_out_cmd( int dev,
       //
       // This is the end of the write loop.  If we get here, the loop
       // is repeated to write the next sector.  Go back to WRITE_LOOP.
-
    }
 
    // read the output registers and trace the command.
 
    sub_trace_command();
 
-   // BMIDE Error=1?
+   // --------------------------------------------------------------------------
+   // Only handle errors (output regs) if we waited for command completion above
+   // --------------------------------------------------------------------------
 
-   if ( sub_readBusMstrStatus() & BM_SR_MASK_ERR )
-   {
-      reg_cmd_info.ec = 78;                  // yes
-      trc_llt( 0, reg_cmd_info.ec, TRC_LLT_ERROR );
+   if ( ( uPollForCommandCompletion != 0 ) || ( int_use_intr_flag != 0 ) ) {
+      // BMIDE Error=1?
+
+      if ( sub_readBusMstrStatus() & BM_SR_MASK_ERR )
+      {
+         reg_cmd_info.ec = 78;                  // yes
+         trc_llt( 0, reg_cmd_info.ec, TRC_LLT_ERROR );
+      }
+
+      // WRITE_DONE:
+
+      // For interrupt mode, remove interrupt handler.
+
+      int_restore_int_vect();
+
+      // mark end of PDO cmd in low level trace
+
+      trc_llt( 0, 0, TRC_LLT_E_PDO );
+
+      // reset reg_drq_block_call_back to NULL (0)
+
+      reg_drq_block_call_back = (void *) 0;
    }
-
-   // WRITE_DONE:
-
-   // For interrupt mode, remove interrupt handler.
-
-   int_restore_int_vect();
-
-   // mark end of PDO cmd in low level trace
-
-   trc_llt( 0, 0, TRC_LLT_E_PDO );
-
-   // reset reg_drq_block_call_back to NULL (0)
-
-   reg_drq_block_call_back = (void *) 0;
 
    // All done.  The return values of this function are described in
    // ATAIO.H.
 
-   UpdateATACommandHistory();
+   ATAIOREG_UpdateATACommandHistory();
 
    if ( reg_cmd_info.ec )
       return 1;

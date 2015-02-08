@@ -20,6 +20,7 @@
 #define KEYBOARD_ARROW_KEY_FIRST          ( 224 ) // 0xE0
 #define KEYBOARD_FUNCTION_KEY_FIRST       ( 0 )
 #define KEYBOARD_ESC                      ( 27 )
+#define KEYBOARD_SPACEBAR                 ( 32 )
 #define KEYBOARD_BACKSPACE                ( 8 )
 #define KEYBOARD_CARRIAGE_RETURN          ( 13 )
 #define KEYBOARD_TAB                      ( (int)'\t' )
@@ -55,14 +56,15 @@ enum VideoType_t
 
 //-----------------------------[Public Functions]-------------------------------
 
-extern void Display_Initialize( void );
-extern void DisplayBuffer( const void* const pInBuffer, unsigned long numberOfSectors, int printType );
-extern void DisplayATARegs( void );
-extern void DisplayATACommandHistory( void );
-extern int GetATACommandParameters( long int* pATARegisters );
-extern void Pause( void );
-extern void RestoreScreen( void );
-extern void SaveScreen( void );
-extern int InstallClock( void );
-extern int UninstallClock( void );
+extern void DISPLAY_Initialize( void );
+extern int  DISPLAY_ATAErase( void );
+extern void DISPLAY_Buffer( const void* const pInBuffer, unsigned long numberOfSectors, int printType );
+extern void DISPLAY_ATARegs( void );
+extern void DISPLAY_ATACommandHistory( void );
+extern int  DISPLAY_GetATACommandParameters( long int* pATARegisters );
+extern void DISPLAY_Pause( void );
+extern void DISPLAY_RestoreScreen( void );
+extern void DISPLAY_SaveScreen( void );
+extern int  DISPLAY_InstallClock( void );
+extern int  DISPLAY_UninstallClock( void );
 

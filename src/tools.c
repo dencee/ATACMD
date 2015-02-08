@@ -29,7 +29,7 @@
 // Input:  pFilePointer   - input stream, usually stdin
 // Output: None
 //------------------------------------------------------------------------------
-void DumpLine( FILE* pFilePointer )
+void TOOLS_DumpLine( FILE* pFilePointer )
 {
    int ch;
 
@@ -46,7 +46,7 @@ void DumpLine( FILE* pFilePointer )
 // Input:  pInputStr    - pointer to pointer of string
 // Output: None
 //------------------------------------------------------------------------------
-void RemovePadding( char** ppInputStr ) // TODO: think about making this char** const ppInputStr -DMC
+void TOOLS_RemovePadding( char** ppInputStr ) // TODO: think about making this char** const ppInputStr -DMC
 {
    char* pStartPtr;
    char* pEndPtr;
@@ -75,7 +75,7 @@ void RemovePadding( char** ppInputStr ) // TODO: think about making this char** 
 // Input:  pInputStr    - pointer to string
 // Output: None
 //------------------------------------------------------------------------------
-void RemoveTrailingSpaces( char* const pInputStr )
+void TOOLS_RemoveTrailingSpaces( char* const pInputStr )
 {
    char* pEndPtr;
 
@@ -98,7 +98,7 @@ void RemoveTrailingSpaces( char* const pInputStr )
 //         numToCompare - number of bytes to compare
 // Output: NO_ERROR
 //------------------------------------------------------------------------------
-int StringCompareIgnoreCase( const char* pStr1, const char* pStr2, int numToCompare )
+int TOOLS_StringCompareIgnoreCase( const char* pStr1, const char* pStr2, int numToCompare )
 {
    int eachChar, result;
 
@@ -124,10 +124,10 @@ int StringCompareIgnoreCase( const char* pStr1, const char* pStr2, int numToComp
 // Input:  ppTimerStr         - äddress of pointer to hold time string
 // Output: None
 //------------------------------------------------------------------------------
-void GetTime( char** ppTimeStr )
+void TOOLS_GetTime( char** ppTimeStr )
 {
    time_t rawTime;
-   struct tm* pTimeInfo;
+   static struct tm* pTimeInfo;     // must be static since it holds the actual time string!
    
    if ( ppTimeStr == NULL ) { printf( "ERROR: Input time string is NULL!" ); return; }
    
