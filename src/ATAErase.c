@@ -18,21 +18,13 @@
 //
 // Purpose:
 //---------
-// The purpose of this program is to act as a diagnostic tool for ATA disk
-// drives. This program differs from other HDD diagnostic tools in that it has
-// the ability to issue commands at the command block register level. This
-// means the program allows the user to send command codes defined by the ATA
-// standard (read, writes, etc.) as well as those that are designated as
-// reserved/unused/vendor by the ATA standard. Of course those undefined
-// command codes have undefined behavior, so if you decide to send those
-// commands, you do so at your own risk, as stated above.
-//
-// For a copy of all the publicly available commands, download one of the ATA
-// specifications at: http://www.t13.org/
+// The purpose of this program is to overwrite all user data for attached
+// hard drives. This does the same kind of erase done in HDDErase:
+// https://en.wikipedia.org/wiki/HDDerase
 //
 // How to use:
 // -----------
-// >>ATACMD.exe
+// >>ATAErase.exe
 //
 // References:
 // -----------
