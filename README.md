@@ -3,6 +3,9 @@ ATACMD
 
 Low-level ATA/SATA hard drive diagnostic tool.
 
+ATAErase.exe - Overwrite all data on each attached hard drive.
+Same kind of erase done in HDDErase: https://en.wikipedia.org/wiki/HDDerase
+
 ATACMD.exe - CLI diagnostic tool. Comamnds are listed in wtAtacmdCommands.
 // The purpose of this program is to act as a diagnostic tool for ATA disk
 // drives. This program differs from other HDD diagnostic tools in that it has
@@ -12,9 +15,6 @@ ATACMD.exe - CLI diagnostic tool. Comamnds are listed in wtAtacmdCommands.
 // reserved/unused/vendor by the ATA standard. Of course those undefined
 // command codes have undefined behavior, so if you decide to send those
 // commands, you do so at your own risk, as stated above.
-
-ATAErase.exe - Overwrite all data on each attached hard drive.
-Same kind of erase done in HDDErase: https://en.wikipedia.org/wiki/HDDerase
 
 ATATest.exe - Issue all commands, even potential vendor commands
 // This program attempts to issue every single ATA command to the drive and log
