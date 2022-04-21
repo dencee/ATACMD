@@ -2,6 +2,27 @@ ATACMD
 ======
 
 Low-level ATA/SATA hard drive diagnostic tool.
+Compiled using Open Watcom & assembler. If you want to use another compler
+You must use a preprocessor switch for your compilers assembler instructions.
+For example: ATAPIO.C
+      #ifdef    __WATCOMC__
+         PreserveAXDX();
+         AsmOutpW( regAddr, data );
+         RestoreDXAX();
+      #else
+         asm   .386
+
+         asm   push  ax
+         asm   push  dx
+
+         asm   mov   dx,regAddr
+         asm   mov   ax,data
+
+         asm   out   dx,ax
+
+         asm   pop   dx
+         asm   pop   ax
+      #endif
 
 ATAErase.exe - Overwrite all data on each attached hard drive.
 Same kind of erase done in HDDErase: https://en.wikipedia.org/wiki/HDDerase
